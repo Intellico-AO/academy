@@ -375,7 +375,7 @@ export interface SessionFormData {
   formador: string;
   objetivosSessao: string[];
   notas: string;
-  atividades: Omit<SessionActivity, 'id'>[];
+  atividades: Omit<SessionActivity, 'id' | 'ordem'>[];
   recursos: Omit<SessionResource, 'id'>[];
 }
 

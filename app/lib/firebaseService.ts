@@ -46,13 +46,14 @@ function requireDb() {
 
 // Helper to convert Firestore timestamps
 function convertTimestamps<T extends DocumentData>(data: T): T {
-  const converted = { ...data };
+  const converted = { ...data } as Record<string, unknown>;
   for (const key in converted) {
-    if (converted[key] instanceof Timestamp) {
-      converted[key] = converted[key].toDate().toISOString();
+    const val = converted[key];
+    if (val instanceof Timestamp) {
+      converted[key] = val.toDate().toISOString();
     }
   }
-  return converted;
+  return converted as T;
 }
 
 // ==========================================

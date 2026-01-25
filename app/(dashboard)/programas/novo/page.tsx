@@ -24,12 +24,12 @@ export default function NovoProgramaPage() {
 
   const [selectedCursoId, setSelectedCursoId] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const programa = adicionarPrograma({
+      const programa = await adicionarPrograma({
         ...formData,
         objetivos: formData.objetivos.filter((o) => o.trim()),
       });

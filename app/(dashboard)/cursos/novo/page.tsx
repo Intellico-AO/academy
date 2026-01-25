@@ -36,12 +36,12 @@ export default function NovoCursoPage() {
     conteudos: [''],
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const curso = adicionarCurso({
+      const curso = await adicionarCurso({
         ...formData,
         objetivosGerais: formData.objetivosGerais.filter((o) => o.trim()),
         prerequisitos: formData.prerequisitos.filter((p) => p.trim()),

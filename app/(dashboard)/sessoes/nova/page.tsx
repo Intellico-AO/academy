@@ -53,12 +53,12 @@ export default function NovaSessaoPage() {
   const selectedCurso = getCurso(formData.cursoId);
   const modulosDisponiveis = selectedCurso?.modulos || [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const sessao = adicionarSessao({
+      const sessao = await adicionarSessao({
         ...formData,
         objetivosSessao: formData.objetivosSessao.filter((o) => o.trim()),
       });

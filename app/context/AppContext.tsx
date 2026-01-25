@@ -282,6 +282,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         alteracoesAntes: antes,
         alteracoesDepois: depois,
         utilizador: state.utilizadorAtual,
+        centroFormacaoId: '',
         dataHora: new Date().toISOString(),
       };
       
@@ -307,6 +308,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const cursoData: Omit<Course, 'id'> = {
         ...data,
         duracaoTotal,
+        centroFormacaoId: '',
         modulos: data.modulos.map((m, i) => ({
           ...m,
           id: uuidv4(),
@@ -400,6 +402,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const programaData: Omit<Program, 'id'> = {
         ...data,
         duracaoTotal,
+        centroFormacaoId: '',
         status: 'rascunho',
         dataCriacao: agora,
         dataAtualizacao: agora,
@@ -477,6 +480,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const sessaoData: Omit<Session, 'id'> = {
         ...data,
+        centroFormacaoId: '',
         atividades: data.atividades.map((a, i) => ({
           ...a,
           id: uuidv4(),
@@ -854,6 +858,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalSessoes: state.sessoes.length,
       sessoesAgendadas: state.sessoes.filter((s) => new Date(s.dataInicio) >= hoje).length,
       horasFormacao: state.cursos.reduce((acc, c) => acc + c.duracaoTotal, 0),
+      totalFormadores: 0,
     };
   }, [state.cursos, state.programas, state.sessoes]);
 

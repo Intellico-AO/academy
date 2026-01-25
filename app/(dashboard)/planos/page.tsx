@@ -20,8 +20,8 @@ function PlanosContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'plano' | 'demonstracao' | 'fichas'>('plano');
 
-  const selectedSessao = selectedSessaoId ? getSessao(selectedSessaoId) : null;
-  const selectedCurso = selectedSessao ? getCurso(selectedSessao.cursoId) : null;
+  const selectedSessao = selectedSessaoId ? getSessao(selectedSessaoId) : undefined;
+  const selectedCurso = selectedSessao ? getCurso(selectedSessao.cursoId) : undefined;
   const selectedModulo = selectedCurso?.modulos.find(m => m.id === selectedSessao?.moduloId);
   const existingPlano = selectedSessaoId ? getPlanoSessao(selectedSessaoId) : null;
   const existingDemonstracao = selectedSessaoId ? getPlanoDemonstracao(selectedSessaoId) : null;
