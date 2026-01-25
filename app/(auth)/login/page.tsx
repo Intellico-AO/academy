@@ -48,6 +48,8 @@ export default function LoginPage() {
         return 'Erro de ligação. Verifique a sua internet.';
       case 'auth/configuration-not-found':
         return 'Sistema não configurado. Contacte o administrador.';
+      case 'auth/not-registered':
+        return 'Não tem conta registada em nenhum centro de formação. Contacte o administrador do seu centro.';
       default:
         return err.message || 'Erro ao iniciar sessão. Tente novamente.';
     }

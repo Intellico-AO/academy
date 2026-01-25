@@ -4,6 +4,7 @@ import {
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
   updateProfile,
+  fetchSignInMethodsForEmail,
   User as FirebaseUser,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -48,10 +49,13 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
   const auth = requireAuth();
   const db = getFirebaseDb();
 
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  // 1. Verificar se o utilizador tem Auth (conta Firebase com email/password)
+  const methods = await fetchSignInMethodsForEmail(auth, email);
+  const hasPasswordAuth = methods.includes('password');
 
-    // Atualizar último acesso
+  if (hasPasswordAuth) {
+    // Tem Auth: fazer sign in
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     if (db) {
       try {
         const userDoc = await getUserByUid(userCredential.user.uid);
@@ -64,34 +68,33 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
         console.warn('Não foi possível atualizar último acesso:', e);
       }
     }
-
     return userCredential.user;
-  } catch (err: unknown) {
-    const code = (err as { code?: string })?.code || '';
-    if (code !== 'auth/user-not-found' && code !== 'auth/invalid-credential') {
-      throw err;
-    }
-
-    // Utilizador pode estar pré-registado numa instituição (sem Firebase Auth): criar conta com a palavra-passe que definiu
-    if (!db) throw err;
-
-    const userDoc = await getUserByEmail(email);
-    if (!userDoc || userDoc.uid) throw err;
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: userDoc.nome });
-      const now = new Date().toISOString();
-      await updateDoc(doc(db, 'users', userDoc.id), {
-        uid: userCredential.user.uid,
-        ultimoAcesso: now,
-      });
-      return userCredential.user;
-    } catch (signUpErr: unknown) {
-      if ((signUpErr as { code?: string })?.code === 'auth/email-already-in-use') throw err;
-      throw signUpErr;
-    }
   }
+
+  // 2. Não tem Auth: verificar se tem registo num centro de formação
+  if (!db) {
+    const error = getFirebaseError();
+    throw Object.assign(new Error(error || 'Sistema não disponível. Tente novamente.'), {
+      code: 'auth/configuration-not-found',
+    });
+  }
+
+  const userDoc = await getUserByEmail(email);
+  if (!userDoc || userDoc.uid) {
+    throw Object.assign(new Error('Não tem conta registada em nenhum centro de formação. Contacte o administrador do seu centro.'), {
+      code: 'auth/not-registered',
+    });
+  }
+
+  // 3. Tem registo e sem Auth: fazer sign up com a palavra-passe que definiu
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(userCredential.user, { displayName: userDoc.nome });
+  const now = new Date().toISOString();
+  await updateDoc(doc(db, 'users', userDoc.id), {
+    uid: userCredential.user.uid,
+    ultimoAcesso: now,
+  });
+  return userCredential.user;
 }
 
 export async function signOut(): Promise<void> {
