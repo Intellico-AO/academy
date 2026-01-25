@@ -39,7 +39,7 @@ export interface TrainingCenter {
 
 export interface UserAccount {
   id: string;
-  uid: string; // Firebase Auth UID
+  uid?: string; // Firebase Auth UID; ausente = utilizador pré-registado (pendente de definir palavra-passe no 1.º login)
   nome: string;
   email: string;
   role: UserRole;

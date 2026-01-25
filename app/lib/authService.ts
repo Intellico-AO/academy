@@ -47,24 +47,51 @@ function requireDb() {
 export async function signIn(email: string, password: string): Promise<FirebaseUser> {
   const auth = requireAuth();
   const db = getFirebaseDb();
-  
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  
-  // Atualizar último acesso
-  if (db) {
-    try {
-      const userDoc = await getUserByUid(userCredential.user.uid);
-      if (userDoc) {
-        await updateDoc(doc(db, 'users', userDoc.id), {
-          ultimoAcesso: new Date().toISOString(),
-        });
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+    // Atualizar último acesso
+    if (db) {
+      try {
+        const userDoc = await getUserByUid(userCredential.user.uid);
+        if (userDoc) {
+          await updateDoc(doc(db, 'users', userDoc.id), {
+            ultimoAcesso: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        console.warn('Não foi possível atualizar último acesso:', e);
       }
-    } catch (e) {
-      console.warn('Não foi possível atualizar último acesso:', e);
+    }
+
+    return userCredential.user;
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code || '';
+    if (code !== 'auth/user-not-found' && code !== 'auth/invalid-credential') {
+      throw err;
+    }
+
+    // Utilizador pode estar pré-registado numa instituição (sem Firebase Auth): criar conta com a palavra-passe que definiu
+    if (!db) throw err;
+
+    const userDoc = await getUserByEmail(email);
+    if (!userDoc || userDoc.uid) throw err;
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: userDoc.nome });
+      const now = new Date().toISOString();
+      await updateDoc(doc(db, 'users', userDoc.id), {
+        uid: userCredential.user.uid,
+        ultimoAcesso: now,
+      });
+      return userCredential.user;
+    } catch (signUpErr: unknown) {
+      if ((signUpErr as { code?: string })?.code === 'auth/email-already-in-use') throw err;
+      throw signUpErr;
     }
   }
-  
-  return userCredential.user;
 }
 
 export async function signOut(): Promise<void> {
@@ -182,6 +209,21 @@ export async function getUserById(id: string): Promise<UserAccount | null> {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as UserAccount;
+  }
+
+  return null;
+}
+
+export async function getUserByEmail(email: string): Promise<UserAccount | null> {
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  const q = query(collection(db, 'users'), where('email', '==', email));
+  const querySnapshot = await getDocs(q);
+
+  if (!querySnapshot.empty) {
+    const docSnap = querySnapshot.docs[0];
     return { id: docSnap.id, ...docSnap.data() } as UserAccount;
   }
 

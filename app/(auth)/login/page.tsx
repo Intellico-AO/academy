@@ -38,6 +38,8 @@ export default function LoginPage() {
         return 'Email ou palavra-passe incorretos';
       case 'auth/invalid-email':
         return 'Email inválido';
+      case 'auth/weak-password':
+        return 'A palavra-passe deve ter pelo menos 6 caracteres';
       case 'auth/too-many-requests':
         return 'Demasiadas tentativas. Tente novamente mais tarde.';
       case 'auth/user-disabled':
