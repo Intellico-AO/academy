@@ -17,12 +17,20 @@ interface PageProps {
 export default function EditarFormadorPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const { center } = useAuth();
+  const { center, user } = useAuth();
   const toast = useToast();
   const [trainer, setTrainer] = useState<Trainer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Verificar se é admin
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      router.push('/');
+      toast.error('Acesso negado', 'Apenas o responsável pode editar formadores.');
+    }
+  }, [user, router, toast]);
 
   const [formData, setFormData] = useState<TrainerFormData & { status: Status }>({
     nome: '',
@@ -127,6 +135,16 @@ export default function EditarFormadorPage({ params }: PageProps) {
     }
   };
 
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
+
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
+
   if (isLoading) {
     return (
       <>
@@ -215,7 +233,7 @@ export default function EditarFormadorPage({ params }: PageProps) {
                   onChange={(e) => setFormData((prev) => ({ ...prev, telefone: e.target.value }))}
                 />
                 <Input
-                  label="NIF"
+                  label="NUI"
                   placeholder="123456789"
                   value={formData.nif}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nif: e.target.value }))}
@@ -228,7 +246,7 @@ export default function EditarFormadorPage({ params }: PageProps) {
                 />
                 <Input
                   label="Nacionalidade"
-                  placeholder="Portuguesa"
+                  placeholder="Angolana"
                   value={formData.nacionalidade}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nacionalidade: e.target.value }))}
                 />
@@ -252,15 +270,15 @@ export default function EditarFormadorPage({ params }: PageProps) {
                   />
                 </div>
                 <Input
-                  label="Código Postal"
-                  placeholder="0000-000"
+                  label="Código Postal (Opcional)"
+                  placeholder="Opcional"
                   value={formData.codigoPostal}
                   onChange={(e) => setFormData((prev) => ({ ...prev, codigoPostal: e.target.value }))}
                 />
                 <div className="md:col-span-2">
                   <Input
                     label="Localidade"
-                    placeholder="Lisboa"
+                    placeholder="Luanda"
                     value={formData.localidade}
                     onChange={(e) => setFormData((prev) => ({ ...prev, localidade: e.target.value }))}
                   />

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Header } from '../../components/layout';
@@ -13,7 +14,8 @@ import { Trainer, Status } from '../../types';
 import * as trainersService from '../../lib/trainersService';
 
 export default function FormadoresPage() {
-  const { center } = useAuth();
+  const { center, user } = useAuth();
+  const router = useRouter();
   const toast = useToast();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,11 +25,19 @@ export default function FormadoresPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMenu, setShowMenu] = useState<string | null>(null);
 
+  // Verificar se é admin
   useEffect(() => {
-    if (center?.id) {
+    if (user && user.role !== 'admin') {
+      router.push('/');
+      toast.error('Acesso negado', 'Apenas o responsável pode gerir formadores.');
+    }
+  }, [user, router, toast]);
+
+  useEffect(() => {
+    if (center?.id && user?.role === 'admin') {
       loadTrainers();
     }
-  }, [center?.id]);
+  }, [center?.id, user?.role]);
 
   const loadTrainers = async () => {
     if (!center?.id) return;
@@ -94,6 +104,11 @@ export default function FormadoresPage() {
       toast.error('Erro', 'Não foi possível ativar o formador. Tente novamente.');
     }
   };
+
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
 
   if (isLoading) {
     return (
@@ -167,7 +182,7 @@ export default function FormadoresPage() {
                 key={trainer.id}
                 variant="bordered"
                 padding="none"
-                className={`card-hover animate-fade-in overflow-hidden`}
+                className={`card-hover animate-fade-in`}
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="p-5">
@@ -185,7 +200,7 @@ export default function FormadoresPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="relative">
+                    <div className="relative overflow-visible">
                       <button
                         onClick={() => setShowMenu(showMenu === trainer.id ? null : trainer.id)}
                         className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
@@ -193,7 +208,7 @@ export default function FormadoresPage() {
                         <MoreVertical className="w-5 h-5 text-slate-400" />
                       </button>
                       {showMenu === trainer.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 animate-scale-in">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 animate-scale-in">
                           <Link
                             href={`/formadores/${trainer.id}`}
                             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"

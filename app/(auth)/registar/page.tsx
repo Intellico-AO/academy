@@ -25,7 +25,7 @@ export default function RegistarPage() {
     centroMorada: '',
     centroCodigoPostal: '',
     centroLocalidade: '',
-    centroPais: 'Portugal',
+    centroPais: 'Angola',
     responsavelNome: '',
     responsavelEmail: '',
     responsavelPassword: '',
@@ -51,8 +51,8 @@ export default function RegistarPage() {
       setError('Preencha todos os campos obrigatórios');
       return false;
     }
-    if (formData.centroNif.length < 9) {
-      setError('NIF inválido (deve ter 9 dígitos)');
+    if (formData.centroNif.length < 11) {
+      setError('NUI inválido (deve ter pelo menos 11 dígitos)');
       return false;
     }
     // Validar email
@@ -100,7 +100,7 @@ export default function RegistarPage() {
   };
 
   const getErrorMessage = (err: any): string => {
-    // Check if it's a Firebase error or a custom error
+    // Verificar se é um erro do Firebase ou um erro personalizado
     if (err.message?.includes('Firebase') || err.message?.includes('configurações')) {
       return 'Sistema não configurado. Contacte o administrador.';
     }
@@ -210,16 +210,16 @@ export default function RegistarPage() {
                       />
                     </div>
                     <Input
-                      label="NIF *"
-                      placeholder="123456789"
+                      label="NUI *"
+                      placeholder="12345678901"
                       value={formData.centroNif}
                       onChange={(e) => updateField('centroNif', e.target.value)}
-                      maxLength={9}
+                      maxLength={11}
                       required
                     />
                     <Input
                       label="Telefone"
-                      placeholder="+351 XXX XXX XXX"
+                      placeholder="+244 XXX XXX XXX"
                       value={formData.centroTelefone}
                       onChange={(e) => updateField('centroTelefone', e.target.value)}
                     />
@@ -227,7 +227,7 @@ export default function RegistarPage() {
                       <Input
                         label="Email do Centro *"
                         type="email"
-                        placeholder="geral@centro.pt"
+                        placeholder="geral@centro.ao"
                         value={formData.centroEmail}
                         onChange={(e) => updateField('centroEmail', e.target.value)}
                         required
@@ -242,14 +242,14 @@ export default function RegistarPage() {
                       />
                     </div>
                     <Input
-                      label="Código Postal"
-                      placeholder="0000-000"
+                      label="Código Postal (Opcional)"
+                      placeholder="Opcional"
                       value={formData.centroCodigoPostal}
                       onChange={(e) => updateField('centroCodigoPostal', e.target.value)}
                     />
                     <Input
                       label="Localidade"
-                      placeholder="Lisboa"
+                      placeholder="Luanda"
                       value={formData.centroLocalidade}
                       onChange={(e) => updateField('centroLocalidade', e.target.value)}
                     />
@@ -294,7 +294,7 @@ export default function RegistarPage() {
                     <Input
                       label="Email *"
                       type="email"
-                      placeholder="responsavel@centro.pt"
+                      placeholder="responsavel@centro.ao"
                       value={formData.responsavelEmail}
                       onChange={(e) => updateField('responsavelEmail', e.target.value)}
                       required
@@ -302,7 +302,7 @@ export default function RegistarPage() {
                     />
                     <Input
                       label="Telefone"
-                      placeholder="+351 XXX XXX XXX"
+                      placeholder="+244 XXX XXX XXX"
                       value={formData.responsavelTelefone}
                       onChange={(e) => updateField('responsavelTelefone', e.target.value)}
                       disabled={isSubmitting}

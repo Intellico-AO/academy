@@ -142,7 +142,7 @@ export default function SessoesPage() {
                   key={sessao.id}
                   variant="bordered"
                   padding="none"
-                  className={`card-hover animate-fade-in overflow-hidden`}
+                  className={`card-hover animate-fade-in`}
                   style={{ animationDelay: `${index * 0.03}s` }}
                 >
                   <div className="flex">
@@ -177,7 +177,7 @@ export default function SessoesPage() {
                           <Badge variant={getStatusBadgeVariant(sessao.status)}>
                             {sessao.status === 'ativo' ? 'Agendado' : getStatusLabel(sessao.status)}
                           </Badge>
-                          <div className="relative">
+                          <div className="relative overflow-visible">
                             <button
                               onClick={() => setShowMenu(showMenu === sessao.id ? null : sessao.id)}
                               className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
@@ -185,7 +185,7 @@ export default function SessoesPage() {
                               <MoreVertical className="w-5 h-5 text-slate-400" />
                             </button>
                             {showMenu === sessao.id && (
-                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 animate-scale-in">
+                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 animate-scale-in">
                                 <Link
                                   href={`/sessoes/${sessao.id}`}
                                   className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"

@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Header } from '../../components/layout';
 import { Card, CardContent, Badge, EmptyState } from '../../components/ui';
 import { History, Search, Filter, BookOpen, Layers, Calendar, ClipboardList, Plus, Edit, Trash2, Archive, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -11,10 +14,26 @@ import { AuditLog, AuditAction } from '../../types';
 
 export default function AuditoriaPage() {
   const { state } = useApp();
+  const { user } = useAuth();
+  const router = useRouter();
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<AuditLog['entidadeTipo'] | 'todos'>('todos');
   const [acaoFilter, setAcaoFilter] = useState<AuditAction | 'todos'>('todos');
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+
+  // Verificar se é admin
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      router.push('/');
+      toast.error('Acesso negado', 'Apenas o responsável pode aceder à auditoria.');
+    }
+  }, [user, router, toast]);
+
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
 
   const filteredLogs = state.auditLogs.filter((log) => {
     const matchesSearch =

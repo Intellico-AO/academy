@@ -179,3 +179,18 @@ export async function checkTrainerNifExists(
 
   return !querySnapshot.empty;
 }
+
+export async function getTrainerByEmail(email: string): Promise<Trainer | null> {
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  const q = query(collection(db, COLLECTION), where('email', '==', email));
+  const querySnapshot = await getDocs(q);
+
+  if (!querySnapshot.empty) {
+    const docSnap = querySnapshot.docs[0];
+    return { id: docSnap.id, ...convertTimestamps(docSnap.data()) } as Trainer;
+  }
+
+  return null;
+}

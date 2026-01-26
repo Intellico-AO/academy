@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   title: string;
@@ -8,6 +9,21 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const { user } = useAuth();
+
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'admin':
+        return 'Administrador';
+      case 'gestor':
+        return 'Gestor';
+      case 'formador':
+        return 'Formador';
+      default:
+        return 'Utilizador';
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200">
       <div className="flex items-center justify-between px-8 py-4">
@@ -45,15 +61,17 @@ export function Header({ title, subtitle }: HeaderProps) {
           </button>
 
           {/* User */}
-          <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white">
-              <User className="w-5 h-5" />
+          {user && (
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold">
+                {user.nome.charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-medium text-slate-900">{user.nome}</p>
+                <p className="text-xs text-slate-500">{getRoleLabel(user.role)}</p>
+              </div>
             </div>
-            <div className="hidden md:block">
-              <p className="text-sm font-medium text-slate-900">Admin</p>
-              <p className="text-xs text-slate-500">Administrador</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </header>

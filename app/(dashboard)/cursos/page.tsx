@@ -102,7 +102,7 @@ export default function CursosPage() {
                 key={curso.id}
                 variant="bordered"
                 padding="none"
-                className={`card-hover animate-fade-in overflow-hidden`}
+                className={`card-hover animate-fade-in`}
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="p-5">
@@ -120,7 +120,7 @@ export default function CursosPage() {
                         </h3>
                       </div>
                     </div>
-                    <div className="relative">
+                    <div className="relative overflow-visible">
                       <button
                         onClick={() => setShowMenu(showMenu === curso.id ? null : curso.id)}
                         className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
@@ -128,7 +128,7 @@ export default function CursosPage() {
                         <MoreVertical className="w-5 h-5 text-slate-400" />
                       </button>
                       {showMenu === curso.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10 animate-scale-in">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 animate-scale-in">
                           <Link
                             href={`/cursos/${curso.id}`}
                             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
@@ -193,7 +193,7 @@ export default function CursosPage() {
                   </div>
                 </div>
 
-                <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between rounded-b-xl overflow-hidden">
                   <Badge variant={getStatusBadgeVariant(curso.status)}>
                     {getStatusLabel(curso.status)}
                   </Badge>

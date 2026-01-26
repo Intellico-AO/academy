@@ -6,16 +6,22 @@ import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Button, Input, Card, CardContent } from '../../components/ui';
-import { GraduationCap, Mail, Lock, AlertCircle } from 'lucide-react';
+import { GraduationCap, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { checkEmailStatus } from '../../lib/authService';
+
+type LoginStep = 'email' | 'password';
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn, isLoading, isAuthenticated } = useAuth();
   const toast = useToast();
+  const [step, setStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ hasAccount: boolean; hasTrainer: boolean } | null>(null);
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
@@ -25,11 +31,11 @@ export default function LoginPage() {
   }, [isAuthenticated, router]);
 
   const getErrorMessage = (err: any): string => {
-    // Check if it's a Firebase error or a custom error
+    // Verificar se é um erro do Firebase ou um erro personalizado
     if (err.message?.includes('Firebase') || err.message?.includes('configurações')) {
       return 'Sistema não configurado. Contacte o administrador.';
     }
-    
+
     const code = err.code || '';
     switch (code) {
       case 'auth/user-not-found':
@@ -55,14 +61,47 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsCheckingEmail(true);
+
+    try {
+      const status = await checkEmailStatus(email);
+      setEmailStatus(status);
+
+      if (status.hasAccount) {
+        // Tem auth: ir para o passo da password
+        setStep('password');
+      } else if (status.hasTrainer) {
+        // Tem conta mas sem auth: ir para o passo da password (para criar password)
+        setStep('password');
+      } else {
+        // Sem auth, sem conta e sem formador: mostrar erro
+        setError('Não tem conta registada em nenhum centro de formação. Contacte o responsável do seu centro de formação.');
+        toast.error('Conta não encontrada', 'Contacte o responsável do seu centro de formação.');
+      }
+    } catch (err: any) {
+      console.error('Erro ao verificar email:', err);
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      toast.error('Erro', errorMessage);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
 
     try {
       await signIn(email, password);
-      toast.success('Sessão iniciada!', 'Bem-vindo de volta.');
+      const message = emailStatus?.hasAccount
+        ? 'Bem-vindo de volta.'
+        : 'Conta ativada! Bem-vindo.';
+      toast.success('Sessão iniciada!', message);
       router.push('/');
     } catch (err: any) {
       console.error('Erro de login:', err);
@@ -72,6 +111,13 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleBackToEmail = () => {
+    setStep('email');
+    setPassword('');
+    setError('');
+    setEmailStatus(null);
   };
 
   return (
@@ -90,7 +136,7 @@ export default function LoginPage() {
         <Card variant="elevated" className="shadow-2xl">
           <CardContent className="p-8">
             <h2 className="text-2xl font-bold text-slate-900 text-center mb-6">
-              Iniciar Sessão
+              {step === 'email' ? 'Iniciar Sessão' : 'Palavra-passe'}
             </h2>
 
             {error && (
@@ -100,63 +146,109 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    required
-                    disabled={isSubmitting}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+            {step === 'email' ? (
+              <form onSubmit={handleEmailSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      required
+                      disabled={isCheckingEmail}
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Palavra-passe
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    minLength={6}
-                    disabled={isSubmitting}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+                <Button
+                  type="submit"
+                  className="w-full py-3"
+                  isLoading={isCheckingEmail}
+                  disabled={isCheckingEmail || isLoading}
+                >
+                  Continuar
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handlePasswordSubmit} className="space-y-5">
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 text-slate-600 text-sm mb-2">
+                    <Mail className="w-4 h-4" />
+                    <span>{email}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBackToEmail}
+                    className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    Alterar email
+                  </button>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span className="text-slate-600">Lembrar-me</span>
-                </label>
-                <Link href="/recuperar-password" className="text-emerald-600 hover:text-emerald-700 font-medium">
-                  Esqueceu a palavra-passe?
-                </Link>
-              </div>
+                {emailStatus?.hasAccount ? (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      Introduza a sua palavra-passe para iniciar sessão.
+                    </p>
+                  </div>
+                ) : emailStatus?.hasTrainer ? (
+                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <p className="text-sm text-emerald-700">
+                      Crie uma palavra-passe para ativar a sua conta como formador. A palavra-passe deve ter pelo menos 6 caracteres.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <p className="text-sm text-emerald-700">
+                      Crie uma palavra-passe para ativar a sua conta. A palavra-passe deve ter pelo menos 6 caracteres.
+                    </p>
+                  </div>
+                )}
 
-              <Button
-                type="submit"
-                className="w-full py-3"
-                isLoading={isSubmitting}
-                disabled={isSubmitting || isLoading}
-              >
-                Entrar
-              </Button>
-            </form>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {emailStatus?.hasAccount ? 'Palavra-passe' : 'Criar palavra-passe'}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                      disabled={isSubmitting}
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                {emailStatus?.hasAccount && (
+                  <div className="text-right text-sm">
+                    <Link href="/recuperar-password" className="text-emerald-600 hover:text-emerald-700 font-medium">
+                      Esqueceu a palavra-passe?
+                    </Link>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full py-3"
+                  isLoading={isSubmitting}
+                  disabled={isSubmitting || isLoading}
+                >
+                  {emailStatus?.hasAccount ? 'Entrar' : emailStatus?.hasTrainer ? 'Criar conta e entrar' : 'Criar conta e entrar'}
+                </Button>
+              </form>
+            )}
 
             <div className="mt-6 text-center">
               <p className="text-slate-600">

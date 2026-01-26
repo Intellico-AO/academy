@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
@@ -12,10 +12,18 @@ import * as trainersService from '../../../lib/trainersService';
 
 export default function NovoFormadorPage() {
   const router = useRouter();
-  const { center } = useAuth();
+  const { center, user } = useAuth();
   const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Verificar se é admin
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      router.push('/');
+      toast.error('Acesso negado', 'Apenas o responsável pode gerir formadores.');
+    }
+  }, [user, router, toast]);
 
   const [formData, setFormData] = useState<TrainerFormData>({
     nome: '',
@@ -54,11 +62,11 @@ export default function NovoFormadorPage() {
         return;
       }
 
-      // Verificar se NIF já existe
+      // Verificar se NUI já existe
       if (formData.nif) {
         const nifExists = await trainersService.checkTrainerNifExists(center.id, formData.nif);
         if (nifExists) {
-          const msg = 'Já existe um formador com este NIF';
+          const msg = 'Já existe um formador com este NUI';
           setError(msg);
           toast.error('Erro de validação', msg);
           setIsSubmitting(false);
@@ -104,6 +112,11 @@ export default function NovoFormadorPage() {
       }));
     }
   };
+
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
 
   return (
     <>
@@ -159,7 +172,7 @@ export default function NovoFormadorPage() {
                   onChange={(e) => setFormData((prev) => ({ ...prev, telefone: e.target.value }))}
                 />
                 <Input
-                  label="NIF"
+                  label="NUI"
                   placeholder="123456789"
                   value={formData.nif}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nif: e.target.value }))}
@@ -172,7 +185,7 @@ export default function NovoFormadorPage() {
                 />
                 <Input
                   label="Nacionalidade"
-                  placeholder="Portuguesa"
+                  placeholder="Angolana"
                   value={formData.nacionalidade}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nacionalidade: e.target.value }))}
                 />
@@ -196,15 +209,15 @@ export default function NovoFormadorPage() {
                   />
                 </div>
                 <Input
-                  label="Código Postal"
-                  placeholder="0000-000"
+                  label="Código Postal (Opcional)"
+                  placeholder="Opcional"
                   value={formData.codigoPostal}
                   onChange={(e) => setFormData((prev) => ({ ...prev, codigoPostal: e.target.value }))}
                 />
                 <div className="md:col-span-2">
                   <Input
                     label="Localidade"
-                    placeholder="Lisboa"
+                    placeholder="Luanda"
                     value={formData.localidade}
                     onChange={(e) => setFormData((prev) => ({ ...prev, localidade: e.target.value }))}
                   />

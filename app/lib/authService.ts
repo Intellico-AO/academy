@@ -19,7 +19,8 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDb, getFirebaseError } from './firebase';
-import { UserAccount, TrainingCenter, RegisterFormData, UserRole } from '../types';
+import { UserAccount, TrainingCenter, RegisterFormData, UserRole, TrainerFormData, Trainer } from '../types';
+import * as trainersService from './trainersService';
 
 // Helper to get auth with error handling
 function requireAuth() {
@@ -45,33 +46,49 @@ function requireDb() {
 // AUTENTICAÇÃO
 // ==========================================
 
+export interface EmailStatus {
+  hasAccount: boolean;
+  hasTrainer: boolean;
+  userDoc: UserAccount | null;
+  trainerDoc: Trainer | null;
+}
+
+export async function checkEmailStatus(email: string): Promise<EmailStatus> {
+  const db = getFirebaseDb();
+
+  if (!db)
+    return {
+      hasAccount: false,
+      hasTrainer: false,
+      userDoc: null,
+      trainerDoc: null
+    };
+
+  let userDoc = await getUserByEmail(email);
+  let hasAccount = false;
+
+  console.log({ userDoc });
+
+  if (userDoc) {
+    hasAccount = true;
+
+  }
+
+  let hasTrainer = false;
+  let trainerDoc: Trainer | null = null;
+
+  if (!userDoc) {
+    trainerDoc = await trainersService.getTrainerByEmail(email);
+    hasTrainer = !!trainerDoc && !trainerDoc.userId; // Tem formador mas sem conta de utilizador
+  }
+
+  return { hasAccount, hasTrainer, userDoc, trainerDoc };
+}
+
 export async function signIn(email: string, password: string): Promise<FirebaseUser> {
   const auth = requireAuth();
   const db = getFirebaseDb();
 
-  // 1. Verify if user has auth
-  const methods = await fetchSignInMethodsForEmail(auth, email);
-  const hasAuth = methods.includes('password');
-
-  // 2.1 If yes, just do the login, and finish
-  if (hasAuth) {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    if (db) {
-      try {
-        const userDoc = await getUserByUid(userCredential.user.uid);
-        if (userDoc) {
-          await updateDoc(doc(db, 'users', userDoc.id), {
-            ultimoAcesso: new Date().toISOString(),
-          });
-        }
-      } catch (e) {
-        console.warn('Não foi possível atualizar último acesso:', e);
-      }
-    }
-    return userCredential.user;
-  }
-
-  // 2.2 If not, verify if user has account in any center
   if (!db) {
     const error = getFirebaseError();
     throw Object.assign(new Error(error || 'Sistema não disponível. Tente novamente.'), {
@@ -79,22 +96,71 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
     });
   }
 
-  const userDoc = await getUserByEmail(email);
-  if (!userDoc || userDoc.uid) {
-    throw Object.assign(new Error('Não tem conta registada em nenhum centro de formação. Contacte o administrador do seu centro.'), {
-      code: 'auth/not-registered',
+  // 1. Verificar primeiro na coleção users
+  let userDoc = await getUserByEmail(email);
+
+
+
+
+  if (userDoc) {
+    // 1.1 Tem conta na coleção users com uid: fazer login
+    if (userDoc.uid) {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await updateDoc(doc(db, 'users', userDoc.id), {
+        ultimoAcesso: new Date().toISOString(),
+      });
+      return userCredential.user;
+    }
+
+    // 1.2 Tem conta na coleção users sem uid: criar auth e atualizar
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, { displayName: userDoc.nome });
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, 'users', userDoc.id), {
+      uid: userCredential.user.uid,
+      ultimoAcesso: now,
     });
+    return userCredential.user;
   }
 
-  // 3.1 If yes, signUp with email and password for this user, and finish
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCredential.user, { displayName: userDoc.nome });
-  const now = new Date().toISOString();
-  await updateDoc(doc(db, 'users', userDoc.id), {
-    uid: userCredential.user.uid,
-    ultimoAcesso: now,
+  // 2. Se não tem conta de utilizador, verificar na lista de formadores
+  const trainerDoc = await trainersService.getTrainerByEmail(email);
+  if (trainerDoc && !trainerDoc.userId) {
+    // Tem formador mas sem conta de utilizador: criar utilizador a partir dos dados do formador
+    const now = new Date().toISOString();
+    const userRef = doc(collection(db, 'users'));
+    const newUser: UserAccount = {
+      id: userRef.id,
+      uid: '', // Será preenchido após criar auth
+      nome: trainerDoc.nome,
+      email: trainerDoc.email,
+      role: 'formador',
+      centroFormacaoId: trainerDoc.centroFormacaoId,
+      ativo: true,
+      dataCriacao: now,
+      ultimoAcesso: now,
+    };
+
+    // Criar conta Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, { displayName: trainerDoc.nome });
+
+    // Atualizar utilizador com uid
+    newUser.uid = userCredential.user.uid;
+    await setDoc(userRef, newUser);
+
+    // Ligar formador ao utilizador criado
+    await updateDoc(doc(db, 'trainers', trainerDoc.id), {
+      userId: newUser.id,
+    });
+
+    return userCredential.user;
+  }
+
+  // 3. Não tem conta nem formador: rejeitar
+  throw Object.assign(new Error('Não tem conta registada em nenhum centro de formação. Contacte o responsável do seu centro de formação.'), {
+    code: 'auth/not-registered',
   });
-  return userCredential.user;
 }
 
 export async function signOut(): Promise<void> {
@@ -112,7 +178,7 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void): () 
   if (!auth) {
     // Se auth não estiver disponível, retorna função vazia
     console.warn('Firebase Auth não disponível para onAuthChange');
-    return () => {};
+    return () => { };
   }
   return onAuthStateChanged(auth, callback);
 }
@@ -182,6 +248,38 @@ export async function registerTrainingCenter(data: RegisterFormData): Promise<{
 
   await setDoc(userRef, user);
 
+  // 4. Criar formador automaticamente para o responsável
+  try {
+    const trainerData: TrainerFormData = {
+      nome: data.responsavelNome,
+      email: data.responsavelEmail,
+      telefone: data.responsavelTelefone,
+      nif: '', // Será preenchido posteriormente se necessário
+      morada: data.centroMorada || '',
+      codigoPostal: data.centroCodigoPostal || '',
+      localidade: data.centroLocalidade || '',
+      dataNascimento: '',
+      nacionalidade: 'Angolana',
+      habilitacoes: '',
+      certificacaoPedagogica: 'CCP',
+      numeroCertificacao: '',
+      validadeCertificacao: '',
+      areasCompetencia: [],
+      experienciaAnos: 0,
+    };
+
+    const trainer = await trainersService.createTrainer(center.id, trainerData);
+
+    // Ligar o formador ao utilizador criado através do userId
+    const trainerDocRef = doc(db, 'trainers', trainer.id);
+    await updateDoc(trainerDocRef, {
+      userId: user.id,
+    });
+  } catch (error) {
+    // Se falhar ao criar formador, logar mas não bloquear o registo
+    console.warn('Não foi possível criar formador automaticamente para o responsável:', error);
+  }
+
   return { center, user };
 }
 
@@ -220,6 +318,7 @@ export async function getUserById(id: string): Promise<UserAccount | null> {
 
 export async function getUserByEmail(email: string): Promise<UserAccount | null> {
   const db = getFirebaseDb();
+
   if (!db) return null;
 
   const q = query(collection(db, 'users'), where('email', '==', email));

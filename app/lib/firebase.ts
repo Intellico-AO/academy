@@ -34,7 +34,7 @@ function initializeFirebase() {
   }
 
   if (!isConfigValid()) {
-    initError = 'Firebase configuration is missing. Please check your .env.local file.';
+    initError = 'Configuração do Firebase em falta. Por favor, verifique o seu ficheiro .env.local.';
     console.error(initError);
     return;
   }
@@ -48,7 +48,7 @@ function initializeFirebase() {
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (error) {
-    initError = `Firebase initialization error: ${error}`;
+    initError = `Erro ao inicializar o Firebase: ${error}`;
     console.error(initError);
   }
 }

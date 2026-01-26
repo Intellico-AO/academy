@@ -3,6 +3,8 @@
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 import { Header } from '../../../components/layout';
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge, getStatusBadgeVariant, getStatusLabel } from '../../../components/ui';
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, Award, FileText, User, Building } from 'lucide-react';
@@ -18,12 +20,24 @@ interface PageProps {
 export default function FormadorDetalhesPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
+  const toast = useToast();
   const [trainer, setTrainer] = useState<Trainer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Verificar se é admin
   useEffect(() => {
-    loadTrainer();
-  }, [id]);
+    if (user && user.role !== 'admin') {
+      router.push('/');
+      toast.error('Acesso negado', 'Apenas o responsável pode ver formadores.');
+    }
+  }, [user, router, toast]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      loadTrainer();
+    }
+  }, [id, user?.role]);
 
   const loadTrainer = async () => {
     try {
@@ -35,6 +49,11 @@ export default function FormadorDetalhesPage({ params }: PageProps) {
       setIsLoading(false);
     }
   };
+
+  // Verificar permissões antes de renderizar
+  if (user && user.role !== 'admin') {
+    return null; // Será redirecionado pelo useEffect
+  }
 
   if (isLoading) {
     return (
@@ -120,7 +139,7 @@ export default function FormadorDetalhesPage({ params }: PageProps) {
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                     <FileText className="w-5 h-5 text-slate-400" />
                     <div>
-                      <p className="text-sm text-slate-500">NIF</p>
+                      <p className="text-sm text-slate-500">NUI</p>
                       <p className="font-medium text-slate-900">{trainer.nif || 'Não definido'}</p>
                     </div>
                   </div>

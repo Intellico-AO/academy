@@ -60,7 +60,7 @@ export default function Dashboard() {
   return (
     <>
       <Header 
-        title="Dashboard" 
+        title="Painel de Controlo" 
         subtitle={format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })}
       />
 
