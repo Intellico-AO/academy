@@ -49,12 +49,12 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
   const auth = requireAuth();
   const db = getFirebaseDb();
 
-  // 1. Verificar se o utilizador tem Auth (conta Firebase com email/password)
+  // 1. Verify if user has auth
   const methods = await fetchSignInMethodsForEmail(auth, email);
-  const hasPasswordAuth = methods.includes('password');
+  const hasAuth = methods.includes('password');
 
-  if (hasPasswordAuth) {
-    // Tem Auth: fazer sign in
+  // 2.1 If yes, just do the login, and finish
+  if (hasAuth) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     if (db) {
       try {
@@ -71,7 +71,7 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
     return userCredential.user;
   }
 
-  // 2. Não tem Auth: verificar se tem registo num centro de formação
+  // 2.2 If not, verify if user has account in any center
   if (!db) {
     const error = getFirebaseError();
     throw Object.assign(new Error(error || 'Sistema não disponível. Tente novamente.'), {
@@ -86,7 +86,7 @@ export async function signIn(email: string, password: string): Promise<FirebaseU
     });
   }
 
-  // 3. Tem registo e sem Auth: fazer sign up com a palavra-passe que definiu
+  // 3.1 If yes, signUp with email and password for this user, and finish
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(userCredential.user, { displayName: userDoc.nome });
   const now = new Date().toISOString();
