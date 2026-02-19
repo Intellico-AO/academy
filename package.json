@@ -6,11 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "biome check ."
   },
   "dependencies": {
-    "@tanstack/react-table": "^8.21.3",
-    "course-planning": "link:",
+    "@tanstack/react-table": "^8.21.3", 
     "date-fns": "^4.1.0",
     "firebase": "^12.8.0",
     "lucide-react": "^0.562.0",
@@ -26,8 +25,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^11.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
