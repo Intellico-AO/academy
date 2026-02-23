@@ -2,16 +2,16 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from './Sidebar';
+import { AdminSidebar } from './AdminSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { FullPageLoader } from '../ui/LoadingSpinner';
 
-interface MainLayoutProps {
+interface AdminLayoutProps {
   children: ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+export function AdminLayout({ children }: AdminLayoutProps) {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { state } = useApp();
   const router = useRouter();
@@ -22,31 +22,31 @@ export function MainLayout({ children }: MainLayoutProps) {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Redirecionar admin para o painel de administração
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.role === 'admin') {
-      router.push('/admin');
+    if (!authLoading && isAuthenticated && user && user.role !== 'admin') {
+      router.push('/');
     }
   }, [user, authLoading, isAuthenticated, router]);
 
-  // Mostrar loading enquanto verifica autenticação
   if (authLoading) {
     return <FullPageLoader message="A verificar autenticação..." />;
   }
 
-  // Se não estiver autenticado, não mostrar nada (vai redirecionar)
   if (!isAuthenticated) {
     return <FullPageLoader message="A redirecionar..." />;
   }
 
-  // Mostrar loading enquanto carrega dados
+  if (user && user.role !== 'admin') {
+    return <FullPageLoader message="A redirecionar..." />;
+  }
+
   if (state.isLoading && !state.isInitialized) {
     return <FullPageLoader message="A carregar dados..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar />
+      <AdminSidebar />
       <main className="ml-64 transition-all duration-300">
         {children}
       </main>
