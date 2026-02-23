@@ -13,7 +13,7 @@ type LoginStep = 'email' | 'password';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, isLoading, isAuthenticated } = useAuth();
+  const { signIn, isLoading, isAuthenticated, user } = useAuth();
   const toast = useToast();
   const [step, setStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
@@ -25,10 +25,10 @@ export default function LoginPage() {
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/');
+    if (isAuthenticated && user) {
+      router.push(user.role === 'admin' ? '/admin' : '/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   const getErrorMessage = (err: any): string => {
     // Verificar se é um erro do Firebase ou um erro personalizado
@@ -102,7 +102,7 @@ export default function LoginPage() {
         ? 'Bem-vindo de volta.'
         : 'Conta ativada! Bem-vindo.';
       toast.success('Sessão iniciada!', message);
-      router.push('/');
+      // O redirecionamento é tratado pelo useEffect que observa isAuthenticated
     } catch (err: any) {
       console.error('Erro de login:', err);
       const errorMessage = getErrorMessage(err);
