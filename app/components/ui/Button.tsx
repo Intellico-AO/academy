@@ -47,6 +47,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={`
+          relative overflow-hidden
           inline-flex items-center justify-center gap-2 
           font-medium rounded-lg
           transition-all duration-200 
@@ -54,6 +55,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           disabled:opacity-50 disabled:cursor-not-allowed
           ${variantStyles[variant]}
           ${sizeStyles[size]}
+          after:content-['']
+          after:absolute after:inset-0
+          after:bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.16),rgba(15,23,42,0.08),rgba(234,179,8,0.14))]
+          after:opacity-0 after:pointer-events-none
+          after:transition-opacity after:duration-300
+          hover:after:opacity-100
           ${className}
         `}
         {...props}
