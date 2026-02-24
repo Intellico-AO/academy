@@ -26,7 +26,14 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={`
-          rounded-xl
+          relative overflow-hidden rounded-xl
+          transition-colors duration-300
+          after:content-['']
+          after:absolute after:inset-0
+          after:bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.08),rgba(15,23,42,0.04),rgba(234,179,8,0.08))]
+          after:opacity-0 after:pointer-events-none
+          after:transition-opacity after:duration-300
+          hover:after:opacity-100
           ${variantStyles[variant]}
           ${paddingStyles[padding]}
           ${className}
