@@ -46,6 +46,7 @@ export interface UserAccount {
   centroFormacaoId: string;
   ativo: boolean;
   avatarUrl?: string;
+  dataNascimento?: string;
   dataCriacao: string;
   ultimoAcesso?: string;
 }
