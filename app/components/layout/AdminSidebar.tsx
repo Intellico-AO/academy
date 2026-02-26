@@ -17,6 +17,7 @@ import {
 
 const menuItems = [
   { href: '/admin', label: 'Administração', icon: LayoutDashboard },
+  { href: '/admin/centros', label: 'Centros de Formação', icon: Building2 },
   { href: '/admin/reguladores', label: 'Reguladores', icon: Scale },
   { href: '/admin/administradores', label: 'Administradores', icon: ShieldCheck },
 ];
