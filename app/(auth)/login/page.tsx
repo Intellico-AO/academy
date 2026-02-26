@@ -26,7 +26,17 @@ export default function LoginPage() {
   // Redirecionar se já estiver autenticado
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.push(user.role === 'admin' ? '/admin' : '/');
+      if (user.role === 'admin') {
+        router.push('/admin');
+        return;
+      }
+
+      if (user.role === 'regulador') {
+        router.push('/regulador');
+        return;
+      }
+
+      router.push('/');
     }
   }, [isAuthenticated, user, router]);
 

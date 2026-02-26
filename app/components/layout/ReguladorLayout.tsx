@@ -2,16 +2,16 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { FullPageLoader } from '../ui/LoadingSpinner';
+import { ReguladorSidebar } from './ReguladorSidebar';
 
-interface MainLayoutProps {
+interface ReguladorLayoutProps {
   children: ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+export function ReguladorLayout({ children }: ReguladorLayoutProps) {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { state } = useApp();
   const router = useRouter();
@@ -22,36 +22,31 @@ export function MainLayout({ children }: MainLayoutProps) {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Redirecionar perfis com ambiente dedicado
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.role === 'admin') {
-      router.push('/admin');
-      return;
-    }
-
-    if (!authLoading && isAuthenticated && user?.role === 'regulador') {
-      router.push('/regulador');
+    if (!authLoading && isAuthenticated && user && user.role !== 'regulador') {
+      router.push('/');
     }
   }, [user, authLoading, isAuthenticated, router]);
 
-  // Mostrar loading enquanto verifica autenticação
   if (authLoading) {
     return <FullPageLoader message="A verificar autenticação..." />;
   }
 
-  // Se não estiver autenticado, não mostrar nada (vai redirecionar)
   if (!isAuthenticated) {
     return <FullPageLoader message="A redirecionar..." />;
   }
 
-  // Mostrar loading enquanto carrega dados
+  if (user && user.role !== 'regulador') {
+    return <FullPageLoader message="A redirecionar..." />;
+  }
+
   if (state.isLoading && !state.isInitialized) {
     return <FullPageLoader message="A carregar dados..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar />
+      <ReguladorSidebar />
       <main className="ml-64 transition-all duration-300">
         {children}
       </main>
