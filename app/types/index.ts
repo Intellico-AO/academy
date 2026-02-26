@@ -34,6 +34,45 @@ export interface TrainingCenter {
 }
 
 // ==========================================
+// REGULADORES
+// ==========================================
+
+export interface Regulator {
+  id: string;
+  nome: string;
+  tipo: 'nacional' | 'regional' | 'internacional' | 'outro';
+  pais: string;
+  descricao?: string;
+  website?: string;
+  email?: string;
+  telefone?: string;
+  morada?: string;
+  logoUrl?: string;
+  cursosCertificados?: string[];
+  programasCertificados?: string[];
+  notasInternas?: string;
+  centroFormacaoId: string;
+  status: Status;
+  dataCriacao: string;
+  dataAtualizacao: string;
+}
+
+export interface RegulatorFormData {
+  nome: string;
+  tipo: 'nacional' | 'regional' | 'internacional' | 'outro';
+  pais: string;
+  descricao?: string;
+  website?: string;
+  email?: string;
+  telefone?: string;
+  morada?: string;
+  logoUrl?: string;
+  cursosCertificados?: string[];
+  programasCertificados?: string[];
+  notasInternas?: string;
+}
+
+// ==========================================
 // UTILIZADOR / CONTA
 // ==========================================
 
@@ -285,7 +324,17 @@ export interface Worksheet {
 
 export interface AuditLog {
   id: string;
-  entidadeTipo: 'curso' | 'programa' | 'sessao' | 'plano' | 'demonstracao' | 'ficha' | 'centro' | 'formador' | 'utilizador';
+  entidadeTipo:
+    | 'curso'
+    | 'programa'
+    | 'sessao'
+    | 'plano'
+    | 'demonstracao'
+    | 'ficha'
+    | 'centro'
+    | 'formador'
+    | 'utilizador'
+    | 'regulador';
   entidadeId: string;
   entidadeNome: string;
   acao: AuditAction;
