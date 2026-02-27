@@ -5,7 +5,7 @@
 export type Status = 'rascunho' | 'ativo' | 'arquivado' | 'cancelado';
 export type SessionType = 'presencial' | 'online' | 'hibrido';
 export type AuditAction = 'criar' | 'editar' | 'eliminar' | 'arquivar' | 'ativar';
-export type UserRole = 'admin' | 'gestor' | 'formador';
+export type UserRole = 'admin' | 'gestor' | 'formador' | 'regulador';
 
 // ==========================================
 // CENTRO DE FORMAÇÃO
@@ -345,6 +345,25 @@ export interface AuditLog {
   centroFormacaoId: string;
   dataHora: string;
   ipAddress?: string;
+}
+
+// ==========================================
+// NOTIFICAÇÕES (REGULADOR → CENTRO DE FORMAÇÃO)
+// ==========================================
+
+export type NotificationType = 'informacao' | 'aviso' | 'urgente' | 'suspensao' | 'ativacao';
+
+export interface Notification {
+  id: string;
+  centroFormacaoId: string;
+  centroFormacaoNome: string;
+  reguladorId: string;
+  reguladorNome: string;
+  tipo: NotificationType;
+  assunto: string;
+  mensagem: string;
+  lida: boolean;
+  dataCriacao: string;
 }
 
 // ==========================================
