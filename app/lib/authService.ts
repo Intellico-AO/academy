@@ -380,6 +380,31 @@ export async function createUser(
   return user;
 }
 
+export async function createReguladorUser(
+  email: string,
+  nome: string,
+  reguladorId: string
+): Promise<UserAccount> {
+  const db = requireDb();
+
+  const now = new Date().toISOString();
+  const userRef = doc(collection(db, 'users'));
+  const user: UserAccount = {
+    id: userRef.id,
+    nome,
+    email,
+    role: 'regulador',
+    centroFormacaoId: '',
+    reguladorId,
+    ativo: true,
+    dataCriacao: now,
+  };
+
+  await setDoc(userRef, user);
+
+  return user;
+}
+
 export async function updateUser(id: string, data: Partial<UserAccount>): Promise<void> {
   const db = requireDb();
   await updateDoc(doc(db, 'users', id), data as Record<string, unknown>);

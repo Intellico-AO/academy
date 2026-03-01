@@ -41,6 +41,18 @@ function convertTimestamps<T extends DocumentData>(data: T): T {
 // FORMADORES
 // ==========================================
 
+export async function getAllTrainers(): Promise<Trainer[]> {
+  const db = getFirebaseDb();
+  if (!db) return [];
+
+  const querySnapshot = await getDocs(collection(db, COLLECTION));
+
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...convertTimestamps(docSnap.data()),
+  })) as Trainer[];
+}
+
 export async function getTrainers(centroFormacaoId: string): Promise<Trainer[]> {
   const db = getFirebaseDb();
   if (!db) return [];

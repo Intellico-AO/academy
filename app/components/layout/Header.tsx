@@ -61,6 +61,8 @@ export function Header({ title, subtitle }: HeaderProps) {
         return 'Gestor';
       case 'formador':
         return 'Formador';
+      case 'regulador':
+        return 'Regulador';
       default:
         return 'Utilizador';
     }
