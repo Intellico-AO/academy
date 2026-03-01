@@ -5,7 +5,7 @@
 export type Status = 'rascunho' | 'ativo' | 'arquivado' | 'cancelado';
 export type SessionType = 'presencial' | 'online' | 'hibrido';
 export type AuditAction = 'criar' | 'editar' | 'eliminar' | 'arquivar' | 'ativar';
-export type UserRole = 'admin' | 'gestor' | 'formador';
+export type UserRole = 'admin' | 'gestor' | 'formador' | 'regulador';
 
 // ==========================================
 // CENTRO DE FORMAÇÃO
@@ -86,6 +86,7 @@ export interface UserAccount {
   ativo: boolean;
   avatarUrl?: string;
   dataNascimento?: string;
+  reguladorId?: string; // Liga o utilizador à entidade reguladora (apenas role='regulador')
   dataCriacao: string;
   ultimoAcesso?: string;
 }

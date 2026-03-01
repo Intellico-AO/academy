@@ -662,6 +662,8 @@ export default function ReguladoresPage() {
                                 ? 'Administrador'
                                 : u.role === 'gestor'
                                 ? 'Gestor'
+                                : u.role === 'regulador'
+                                ? 'Regulador'
                                 : 'Formador'}
                             </p>
                           </div>

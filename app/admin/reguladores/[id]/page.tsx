@@ -4,15 +4,16 @@ import { use, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { ArrowLeft, Edit, Scale } from 'lucide-react';
+import { ArrowLeft, Edit, Scale, UserPlus, Mail, User, CheckCircle } from 'lucide-react';
 
 import { Header } from '../../../components/layout';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '../../../components/ui';
-import { AuditLog, Regulator } from '../../../types';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from '../../../components/ui';
+import { AuditLog, Regulator, UserAccount } from '../../../types';
 import * as regulatorsService from '../../../lib/regulatorsService';
 import * as firebaseService from '../../../lib/firebaseService';
+import * as authService from '../../../lib/authService';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -29,6 +30,14 @@ export default function DetalheReguladorPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+
+  // Estado da conta de utilizador regulador
+  const [reguladorUser, setReguladorUser] = useState<UserAccount | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserNome, setNewUserNome] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -69,6 +78,68 @@ export default function DetalheReguladorPage({ params }: PageProps) {
 
     loadLogs();
   }, [id]);
+
+  // Carregar conta de utilizador regulador (se existir)
+  useEffect(() => {
+    const loadReguladorUser = async () => {
+      try {
+        const db = (await import('../../../lib/firebase')).getFirebaseDb();
+        if (!db) return;
+
+        const { collection: col, query: q, where: w, getDocs: gd } = await import('firebase/firestore');
+        const usersQuery = q(col(db, 'users'), w('reguladorId', '==', id), w('role', '==', 'regulador'));
+        const snapshot = await gd(usersQuery);
+
+        if (!snapshot.empty) {
+          const docSnap = snapshot.docs[0];
+          setReguladorUser({ id: docSnap.id, ...docSnap.data() } as UserAccount);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar utilizador regulador:', error);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    loadReguladorUser();
+  }, [id]);
+
+  const handleCreateReguladorUser = async () => {
+    if (!newUserNome.trim() || !newUserEmail.trim()) {
+      toast.error('Campos obrigatórios', 'Preencha o nome e o email do utilizador.');
+      return;
+    }
+
+    setIsCreatingUser(true);
+    try {
+      // Verificar se o email já existe
+      const emailExists = await authService.checkEmailExists(newUserEmail);
+      if (emailExists) {
+        toast.error('Email já registado', 'Este email já está associado a outra conta.');
+        setIsCreatingUser(false);
+        return;
+      }
+
+      const newUser = await authService.createReguladorUser(
+        newUserEmail.trim(),
+        newUserNome.trim(),
+        id
+      );
+      setReguladorUser(newUser);
+      setShowCreateUser(false);
+      setNewUserNome('');
+      setNewUserEmail('');
+      toast.success(
+        'Conta criada',
+        `A conta de regulador foi criada para ${newUser.email}. O utilizador irá definir a palavra-passe no primeiro login.`
+      );
+    } catch (error) {
+      console.error('Erro ao criar utilizador regulador:', error);
+      toast.error('Erro', 'Não foi possível criar a conta de utilizador. Tente novamente.');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
 
   if (user && user.role !== 'admin') {
     return null;
@@ -292,6 +363,113 @@ export default function DetalheReguladorPage({ params }: PageProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Conta de Utilizador Regulador */}
+        <Card variant="bordered" className="mt-6">
+          <CardHeader>
+            <CardTitle>Conta de Utilizador</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingUser ? (
+              <p className="text-sm text-slate-500">A carregar...</p>
+            ) : reguladorUser ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-4 rounded-lg border border-emerald-200 bg-emerald-50">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-emerald-900">
+                      Conta de regulador ativa
+                    </p>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      {reguladorUser.nome} ({reguladorUser.email})
+                    </p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      {reguladorUser.uid
+                        ? 'Palavra-passe já definida'
+                        : 'A aguardar primeiro login para definir palavra-passe'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : showCreateUser ? (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  Crie uma conta para que o regulador possa aceder ao sistema.
+                  O email será usado para login e para definir a palavra-passe no primeiro acesso.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Nome do utilizador
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={newUserNome}
+                        onChange={(e) => setNewUserNome(e.target.value)}
+                        placeholder="Nome completo"
+                        disabled={isCreatingUser}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        placeholder="email@regulador.com"
+                        disabled={isCreatingUser}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleCreateReguladorUser}
+                    isLoading={isCreatingUser}
+                    disabled={isCreatingUser}
+                    size="sm"
+                  >
+                    Criar conta
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowCreateUser(false);
+                      setNewUserNome('');
+                      setNewUserEmail('');
+                    }}
+                    disabled={isCreatingUser}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">
+                  Este regulador ainda não tem conta de utilizador. Crie uma conta para que o regulador possa aceder ao sistema e gerir os centros de formação.
+                </p>
+                <Button
+                  size="sm"
+                  leftIcon={<UserPlus className="w-4 h-4" />}
+                  onClick={() => setShowCreateUser(true)}
+                >
+                  Criar conta de regulador
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card variant="bordered" className="mt-6">
           <CardHeader>
