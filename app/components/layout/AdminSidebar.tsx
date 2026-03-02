@@ -11,20 +11,19 @@ import {
   ChevronLeft,
   ChevronRight,
   GraduationCap,
-  Building2,
   LogOut,
 } from 'lucide-react';
 
-const menuItems = [
-  { href: '/admin', label: 'Administração', icon: LayoutDashboard },
-  { href: '/admin/reguladores', label: 'Reguladores', icon: Scale },
-  { href: '/admin/administradores', label: 'Administradores', icon: ShieldCheck },
+const allMenuItems = [
+  { href: '/admin', label: 'Administração', icon: LayoutDashboard, ownerOnly: false },
+  { href: '/admin/reguladores', label: 'Reguladores', icon: Scale, ownerOnly: false },
+  { href: '/admin/administradores', label: 'Administradores', icon: ShieldCheck, ownerOnly: true },
 ];
 
 export function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
-  const { user, center, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -76,24 +75,11 @@ export function AdminSidebar() {
         </button>
       </div>
 
-      {/* Centro de Formação Info */}
-      {!isCollapsed && center && (
-        <div className="px-4 py-3 border-b border-slate-700/50">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{center.nome}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
+        {allMenuItems
+          .filter((item) => !item.ownerOnly || (user?.adminRole || 'owner') === 'owner')
+          .map((item) => {
           const Icon = item.icon;
           const isActive = item.href === '/admin'
             ? pathname === '/admin'

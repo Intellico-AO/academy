@@ -57,6 +57,18 @@ export async function getRegulators(
   })) as Regulator[];
 }
 
+export async function getAllRegulators(): Promise<Regulator[]> {
+  const db = getFirebaseDb();
+  if (!db) return [];
+
+  const querySnapshot = await getDocs(collection(db, COLLECTION));
+
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...convertTimestamps(docSnap.data()),
+  })) as Regulator[];
+}
+
 export async function getRegulator(id: string): Promise<Regulator | null> {
   const db = getFirebaseDb();
   if (!db) return null;

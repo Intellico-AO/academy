@@ -12,7 +12,7 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseDb } from './firebase';
-import { Trainer, TrainerFormData } from '../types';
+import { Trainer, TrainerFormData, VerificacaoCertificado } from '../types';
 
 const COLLECTION = 'trainers';
 
@@ -139,6 +139,39 @@ export async function activateTrainer(id: string): Promise<void> {
     status: 'ativo',
     dataAtualizacao: new Date().toISOString(),
   });
+}
+
+export async function updateTrainerStatus(id: string, status: string): Promise<void> {
+  const db = requireDb();
+
+  const docRef = doc(db, COLLECTION, id);
+  await updateDoc(docRef, {
+    status,
+    dataAtualizacao: new Date().toISOString(),
+  });
+}
+
+export async function verificarCertificado(
+  id: string,
+  data: {
+    verificacaoCertificado: VerificacaoCertificado;
+    verificacaoPor: string;
+    verificacaoNotas?: string;
+  }
+): Promise<void> {
+  const db = requireDb();
+
+  const updateData: Record<string, unknown> = {
+    verificacaoCertificado: data.verificacaoCertificado,
+    verificacaoPor: data.verificacaoPor,
+    verificacaoData: new Date().toISOString(),
+    dataAtualizacao: new Date().toISOString(),
+  };
+  if (data.verificacaoNotas !== undefined) {
+    updateData.verificacaoNotas = data.verificacaoNotas;
+  }
+
+  await updateDoc(doc(db, COLLECTION, id), updateData);
 }
 
 export async function getActiveTrainers(centroFormacaoId: string): Promise<Trainer[]> {

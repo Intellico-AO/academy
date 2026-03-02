@@ -49,6 +49,12 @@ export function getStatusBadgeVariant(status: Status): BadgeVariant {
       return 'default';
     case 'cancelado':
       return 'danger';
+    case 'inativo':
+      return 'danger';
+    case 'em_avaliacao':
+      return 'info';
+    case 'aguardando_aprovacao':
+      return 'warning';
     default:
       return 'default';
   }
@@ -64,6 +70,12 @@ export function getStatusLabel(status: Status): string {
       return 'Arquivado';
     case 'cancelado':
       return 'Cancelado';
+    case 'inativo':
+      return 'Inativo';
+    case 'em_avaliacao':
+      return 'Em Avaliação';
+    case 'aguardando_aprovacao':
+      return 'Aguardando Aprovação';
     default:
       return status;
   }

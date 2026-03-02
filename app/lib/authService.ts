@@ -13,13 +13,14 @@ import {
   setDoc,
   getDoc,
   updateDoc,
+  deleteDoc,
   collection,
   query,
   where,
   getDocs,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseDb, getFirebaseError } from './firebase';
-import { UserAccount, TrainingCenter, RegisterFormData, UserRole, TrainerFormData, Trainer } from '../types';
+import { UserAccount, TrainingCenter, RegisterFormData, UserRole, AdminRole, TrainerFormData, Trainer } from '../types';
 import * as trainersService from './trainersService';
 
 // Helper to get auth with error handling
@@ -408,6 +409,49 @@ export async function createReguladorUser(
 export async function updateUser(id: string, data: Partial<UserAccount>): Promise<void> {
   const db = requireDb();
   await updateDoc(doc(db, 'users', id), data as Record<string, unknown>);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const db = requireDb();
+  await deleteDoc(doc(db, 'users', id));
+}
+
+export async function getAllAdminUsers(): Promise<UserAccount[]> {
+  const db = getFirebaseDb();
+  if (!db) return [];
+
+  const q = query(collection(db, 'users'), where('role', '==', 'admin'));
+  const querySnapshot = await getDocs(q);
+
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as UserAccount[];
+}
+
+export async function createAdminUser(
+  email: string,
+  nome: string,
+  adminRole: AdminRole
+): Promise<UserAccount> {
+  const db = requireDb();
+
+  const now = new Date().toISOString();
+  const userRef = doc(collection(db, 'users'));
+  const user: UserAccount = {
+    id: userRef.id,
+    nome,
+    email,
+    role: 'admin',
+    adminRole,
+    centroFormacaoId: '',
+    ativo: true,
+    dataCriacao: now,
+  };
+
+  await setDoc(userRef, user);
+
+  return user;
 }
 
 // ==========================================

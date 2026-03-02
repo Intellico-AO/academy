@@ -45,14 +45,6 @@ export default function NovoReguladorPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!center?.id) {
-      toast.error(
-        'Centro não encontrado',
-        'Não foi possível identificar o centro de formação.'
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -65,7 +57,7 @@ export default function NovoReguladorPage() {
         .map((p) => p.trim())
         .filter(Boolean);
 
-      const regulator = await regulatorsService.createRegulator(center.id, {
+      const regulator = await regulatorsService.createRegulator(center?.id || '', {
         ...formData,
         descricao: formData.descricao?.trim() || undefined,
         website: formData.website?.trim() || undefined,
@@ -88,7 +80,7 @@ export default function NovoReguladorPage() {
           alteracoesAntes: null,
           alteracoesDepois: regulator as unknown as Record<string, unknown>,
           utilizador: user?.nome || user?.email || 'Desconhecido',
-          centroFormacaoId: center.id,
+          centroFormacaoId: center?.id || '',
           dataHora: new Date().toISOString(),
         });
       } catch (logError) {

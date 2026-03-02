@@ -54,18 +54,18 @@ export default function ReguladoresPage() {
   }, [user, router, toast]);
 
   useEffect(() => {
-    if (center?.id && user?.role === 'admin') {
+    if (user?.role === 'admin') {
       loadRegulators();
       loadUsers();
     }
-  }, [center?.id, user?.role]);
+  }, [user?.role]);
 
   const loadRegulators = async () => {
-    if (!center?.id) return;
-
     setIsLoading(true);
     try {
-      const data = await regulatorsService.getRegulators(center.id);
+      const data = center?.id
+        ? await regulatorsService.getRegulators(center.id)
+        : await regulatorsService.getAllRegulators();
       setRegulators(data);
     } catch (error) {
       console.error('Erro ao carregar reguladores:', error);
@@ -76,7 +76,10 @@ export default function ReguladoresPage() {
   };
 
   const loadUsers = async () => {
-    if (!center?.id) return;
+    if (!center?.id) {
+      setIsLoadingUsers(false);
+      return;
+    }
 
     setIsLoadingUsers(true);
     try {
@@ -113,7 +116,7 @@ export default function ReguladoresPage() {
       await regulatorsService.deleteRegulator(selectedRegulator.id);
       setRegulators((prev) => prev.filter((r) => r.id !== selectedRegulator.id));
 
-      if (before && center) {
+      if (before) {
         try {
           await firebaseService.createAuditLog({
             entidadeTipo: 'regulador',
@@ -124,7 +127,7 @@ export default function ReguladoresPage() {
             alteracoesAntes: before as unknown as Record<string, unknown>,
             alteracoesDepois: null,
             utilizador: user?.nome || user?.email || 'Desconhecido',
-            centroFormacaoId: center.id,
+            centroFormacaoId: center?.id || '',
             dataHora: new Date().toISOString(),
           });
         } catch (logError) {
@@ -169,27 +172,25 @@ export default function ReguladoresPage() {
         afterStatus = 'ativo';
       }
 
-      if (center) {
-        try {
-          const after: Regulator = { ...before, status: afterStatus };
-          await firebaseService.createAuditLog({
-            entidadeTipo: 'regulador',
-            entidadeId: regulator.id,
-            entidadeNome: after.nome,
-            acao: afterStatus === 'ativo' ? 'ativar' : 'arquivar',
-            detalhes:
-              afterStatus === 'ativo'
-                ? `Regulador "${after.nome}" ativado.`
-                : `Regulador "${after.nome}" arquivado.`,
-            alteracoesAntes: before as unknown as Record<string, unknown>,
-            alteracoesDepois: after as unknown as Record<string, unknown>,
-            utilizador: user?.nome || user?.email || 'Desconhecido',
-            centroFormacaoId: center.id,
-            dataHora: new Date().toISOString(),
-          });
-        } catch (logError) {
-          console.error('Erro ao registar log de auditoria de regulador:', logError);
-        }
+      try {
+        const after: Regulator = { ...before, status: afterStatus };
+        await firebaseService.createAuditLog({
+          entidadeTipo: 'regulador',
+          entidadeId: regulator.id,
+          entidadeNome: after.nome,
+          acao: afterStatus === 'ativo' ? 'ativar' : 'arquivar',
+          detalhes:
+            afterStatus === 'ativo'
+              ? `Regulador "${after.nome}" ativado.`
+              : `Regulador "${after.nome}" arquivado.`,
+          alteracoesAntes: before as unknown as Record<string, unknown>,
+          alteracoesDepois: after as unknown as Record<string, unknown>,
+          utilizador: user?.nome || user?.email || 'Desconhecido',
+          centroFormacaoId: center?.id || '',
+          dataHora: new Date().toISOString(),
+        });
+      } catch (logError) {
+        console.error('Erro ao registar log de auditoria de regulador:', logError);
       }
       setMenuOpenId(null);
     } catch (error) {
@@ -253,7 +254,7 @@ export default function ReguladoresPage() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    if (!file || !center?.id) return;
+    if (!file) return;
 
     setIsImporting(true);
 
@@ -288,7 +289,7 @@ export default function ReguladoresPage() {
           descricao: cols[idx('descricao')] || undefined,
         };
 
-        const regulator = await regulatorsService.createRegulator(center.id, data);
+        const regulator = await regulatorsService.createRegulator(center?.id || '', data);
         created.push(regulator);
 
         try {
@@ -301,7 +302,7 @@ export default function ReguladoresPage() {
             alteracoesAntes: null,
             alteracoesDepois: regulator as unknown as Record<string, unknown>,
             utilizador: user?.nome || user?.email || 'Desconhecido',
-            centroFormacaoId: center.id,
+            centroFormacaoId: center?.id || '',
             dataHora: new Date().toISOString(),
           });
         } catch (logError) {

@@ -2,10 +2,11 @@
 // TIPOS BASE
 // ==========================================
 
-export type Status = 'rascunho' | 'ativo' | 'arquivado' | 'cancelado';
+export type Status = 'rascunho' | 'ativo' | 'arquivado' | 'cancelado' | 'inativo' | 'em_avaliacao' | 'aguardando_aprovacao';
 export type SessionType = 'presencial' | 'online' | 'hibrido';
 export type AuditAction = 'criar' | 'editar' | 'eliminar' | 'arquivar' | 'ativar';
 export type UserRole = 'admin' | 'gestor' | 'formador' | 'regulador';
+export type AdminRole = 'owner' | 'manager';
 
 // ==========================================
 // CENTRO DE FORMAÇÃO
@@ -73,6 +74,31 @@ export interface RegulatorFormData {
 }
 
 // ==========================================
+// NOTAS DO REGULADOR
+// ==========================================
+
+export type NotaCategoria =
+  | 'informacoes_gerais'
+  | 'contacto'
+  | 'certificacoes'
+  | 'curso'
+  | 'formador'
+  | 'programa';
+
+export interface ReguladorNota {
+  id: string;
+  centroFormacaoId: string;
+  reguladorId: string;
+  categoria: NotaCategoria;
+  referenciaId?: string;
+  referenciaNome?: string;
+  conteudo: string;
+  utilizador: string;
+  dataCriacao: string;
+  dataAtualizacao: string;
+}
+
+// ==========================================
 // UTILIZADOR / CONTA
 // ==========================================
 
@@ -86,6 +112,7 @@ export interface UserAccount {
   ativo: boolean;
   avatarUrl?: string;
   dataNascimento?: string;
+  adminRole?: AdminRole; // 'owner' = gestão total, 'manager' = admin sem gerir admins (apenas role='admin')
   reguladorId?: string; // Liga o utilizador à entidade reguladora (apenas role='regulador')
   dataCriacao: string;
   ultimoAcesso?: string;
@@ -94,6 +121,8 @@ export interface UserAccount {
 // ==========================================
 // FORMADOR
 // ==========================================
+
+export type VerificacaoCertificado = 'pendente' | 'verificado' | 'rejeitado' | 'expirado';
 
 export interface Trainer {
   id: string;
@@ -116,6 +145,10 @@ export interface Trainer {
   fotografia?: string;
   centroFormacaoId: string;
   userId?: string; // Se o formador tiver conta no sistema
+  verificacaoCertificado?: VerificacaoCertificado;
+  verificacaoData?: string;
+  verificacaoPor?: string;
+  verificacaoNotas?: string;
   status: Status;
   dataCriacao: string;
   dataAtualizacao: string;
@@ -335,7 +368,8 @@ export interface AuditLog {
     | 'centro'
     | 'formador'
     | 'utilizador'
-    | 'regulador';
+    | 'regulador'
+    | 'administrador';
   entidadeId: string;
   entidadeNome: string;
   acao: AuditAction;

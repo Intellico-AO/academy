@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import Link from 'next/link';
 import { Header } from '../../components/layout';
 import {
   Card,
-  CardContent,
   Badge,
   EmptyState,
   getStatusBadgeVariant,
@@ -25,6 +25,7 @@ import {
   Phone,
   Award,
   Building2,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function ReguladorFormadoresPage() {
@@ -106,7 +107,7 @@ export default function ReguladorFormadoresPage() {
               className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
-          <div className="relative w-[140px]">
+          <div className="relative w-[180px]">
             <Filter className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <select
               value={statusFilter}
@@ -117,6 +118,9 @@ export default function ReguladorFormadoresPage() {
             >
               <option value="todos">Todos os estados</option>
               <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+              <option value="em_avaliacao">Em Avaliação</option>
+              <option value="aguardando_aprovacao">Aguardando Aprovação</option>
               <option value="arquivado">Arquivado</option>
             </select>
           </div>
@@ -140,82 +144,88 @@ export default function ReguladorFormadoresPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredFormadores.map((formador, index) => (
-              <Card
+              <Link
                 key={formador.id}
-                variant="bordered"
-                padding="none"
-                className="card-hover animate-fade-in"
-                style={{ animationDelay: `${index * 0.05}s` }}
+                href={`/regulador/formadores/${formador.id}`}
+                className="block group"
               >
-                <div className="p-5">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-lg font-bold">
-                      {formador.nome.charAt(0).toUpperCase()}
+                <Card
+                  variant="bordered"
+                  padding="none"
+                  className="card-hover animate-fade-in transition-shadow group-hover:shadow-md"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div className="p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-lg font-bold">
+                        {formador.nome.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-slate-900 line-clamp-1 group-hover:text-amber-600 transition-colors">
+                          {formador.nome}
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          {formador.experienciaAnos} anos de experiência
+                        </p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-amber-500 transition-colors flex-shrink-0 mt-1" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-slate-900 line-clamp-1">
-                        {formador.nome}
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        {formador.experienciaAnos} anos de experiência
-                      </p>
+
+                    <div className="space-y-2 text-sm text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="truncate">
+                          {getCentroNome(formador.centroFormacaoId)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="truncate">{formador.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span>{formador.telefone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="truncate">
+                          {formador.certificacaoPedagogica} - {formador.numeroCertificacao || 'N/A'}
+                        </span>
+                      </div>
                     </div>
+
+                    {formador.areasCompetencia.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {formador.areasCompetencia.slice(0, 3).map((area) => (
+                          <span
+                            key={area}
+                            className="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 rounded-full"
+                          >
+                            {area}
+                          </span>
+                        ))}
+                        {formador.areasCompetencia.length > 3 && (
+                          <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-500 rounded-full">
+                            +{formador.areasCompetencia.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-2 text-sm text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">
-                        {getCentroNome(formador.centroFormacaoId)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">{formador.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span>{formador.telefone}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">
-                        {formador.certificacaoPedagogica} - {formador.numeroCertificacao || 'N/A'}
-                      </span>
-                    </div>
+                  <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                    <Badge variant={getStatusBadgeVariant(formador.status)}>
+                      {getStatusLabel(formador.status)}
+                    </Badge>
+                    <span className="text-xs text-slate-400">
+                      Desde{' '}
+                      {format(new Date(formador.dataCriacao), 'MMM yyyy', {
+                        locale: pt,
+                      })}
+                    </span>
                   </div>
-
-                  {formador.areasCompetencia.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {formador.areasCompetencia.slice(0, 3).map((area) => (
-                        <span
-                          key={area}
-                          className="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 rounded-full"
-                        >
-                          {area}
-                        </span>
-                      ))}
-                      {formador.areasCompetencia.length > 3 && (
-                        <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-500 rounded-full">
-                          +{formador.areasCompetencia.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                  <Badge variant={getStatusBadgeVariant(formador.status)}>
-                    {getStatusLabel(formador.status)}
-                  </Badge>
-                  <span className="text-xs text-slate-400">
-                    Desde{' '}
-                    {format(new Date(formador.dataCriacao), 'MMM yyyy', {
-                      locale: pt,
-                    })}
-                  </span>
-                </div>
-              </Card>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
