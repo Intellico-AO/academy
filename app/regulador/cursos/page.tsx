@@ -11,6 +11,7 @@ import {
   EmptyState,
   getStatusBadgeVariant,
   getStatusLabel,
+  Button,
 } from '../../components/ui';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +26,8 @@ import {
   Layers,
   Building2,
   Target,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 
 export default function ReguladorCursosPage() {
@@ -36,33 +39,66 @@ export default function ReguladorCursosPage() {
   const [statusFilter, setStatusFilter] = useState<Status | 'todos'>('todos');
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [cursosData, centrosData] = await Promise.all([
-          firebaseService.getCourses(),
-          authService.getAllTrainingCenters(),
-        ]);
-        setCursos(cursosData);
-        setCentros(centrosData);
-      } catch (error) {
-        console.error('Erro ao carregar cursos:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
     fetchData();
   }, []);
+
+  async function fetchData() {
+    try {
+      const [cursosData, centrosData] = await Promise.all([
+        firebaseService.getCourses(),
+        authService.getAllTrainingCenters(),
+      ]);
+      setCursos(cursosData);
+      setCentros(centrosData);
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const getCentroNome = (centroId: string) => {
     const centro = centros.find((c) => c.id === centroId);
     return centro?.nome || 'Desconhecido';
   };
 
+  const handleAprovar = async (curso: Course) => {
+    try {
+      await firebaseService.updateCourse(curso.id, { status: 'ativo' });
+      setCursos((prev) =>
+        prev.map((c) =>
+          c.id === curso.id ? { ...c, status: 'ativo' } : c
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao aprovar curso:', error);
+    }
+  };
+
+  const handleRejeitar = async (curso: Course) => {
+    try {
+      await firebaseService.updateCourse(curso.id, { status: 'rascunho' });
+      setCursos((prev) =>
+        prev.map((c) =>
+          c.id === curso.id ? { ...c, status: 'rascunho' } : c
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao rejeitar curso:', error);
+    }
+  };
+
+  const pendentes = cursos.filter(
+    (c) => c.status === 'aguardando_aprovacao'
+  ).length;
+
   const filteredCursos = useMemo(
     () =>
       cursos.filter((curso) => {
         const term = searchTerm.toLowerCase();
-        const centroNome = getCentroNome(curso.centroFormacaoId).toLowerCase();
+        const centroNome = getCentroNome(
+          curso.centroFormacaoId
+        ).toLowerCase();
         const matchesSearch =
           curso.nome.toLowerCase().includes(term) ||
           curso.codigo.toLowerCase().includes(term) ||
@@ -90,7 +126,7 @@ export default function ReguladorCursosPage() {
     <>
       <Header
         title="Cursos"
-        subtitle={`${cursos.length} cursos registados`}
+        subtitle={`${cursos.length} cursos registados${pendentes > 0 ? ` • ${pendentes} pendente${pendentes > 1 ? 's' : ''}` : ''}`}
       />
 
       <div className="p-8">
@@ -106,7 +142,7 @@ export default function ReguladorCursosPage() {
               className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
-          <div className="relative w-[140px]">
+          <div className="relative w-[200px]">
             <Filter className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <select
               value={statusFilter}
@@ -116,6 +152,9 @@ export default function ReguladorCursosPage() {
               className="w-full pl-7 pr-6 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none cursor-pointer"
             >
               <option value="todos">Todos os estados</option>
+              <option value="aguardando_aprovacao">
+                Aguardando Aprovação
+              </option>
               <option value="ativo">Ativo</option>
               <option value="rascunho">Rascunho</option>
               <option value="arquivado">Arquivado</option>
@@ -145,7 +184,7 @@ export default function ReguladorCursosPage() {
                 key={curso.id}
                 variant="bordered"
                 padding="none"
-                className="card-hover animate-fade-in"
+                className={`card-hover animate-fade-in ${curso.status === 'aguardando_aprovacao' ? 'ring-2 ring-amber-300' : ''}`}
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="p-5">
@@ -157,7 +196,9 @@ export default function ReguladorCursosPage() {
                       <h3 className="font-semibold text-slate-900 line-clamp-1">
                         {curso.nome}
                       </h3>
-                      <p className="text-sm text-slate-500">{curso.codigo}</p>
+                      <p className="text-sm text-slate-500">
+                        {curso.codigo}
+                      </p>
                     </div>
                   </div>
 
@@ -182,13 +223,19 @@ export default function ReguladorCursosPage() {
                       <Layers className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <span>
                         {curso.modulos.length}{' '}
-                        {curso.modulos.length === 1 ? 'módulo' : 'módulos'}
+                        {curso.modulos.length === 1
+                          ? 'módulo'
+                          : 'módulos'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">{curso.publicoAlvo}</span>
-                    </div>
+                    {curso.publicoAlvo && (
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <span className="truncate">
+                          {curso.publicoAlvo}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -196,12 +243,40 @@ export default function ReguladorCursosPage() {
                   <Badge variant={getStatusBadgeVariant(curso.status)}>
                     {getStatusLabel(curso.status)}
                   </Badge>
-                  <span className="text-xs text-slate-400">
-                    Desde{' '}
-                    {format(new Date(curso.dataCriacao), 'MMM yyyy', {
-                      locale: pt,
-                    })}
-                  </span>
+
+                  {curso.status === 'aguardando_aprovacao' ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRejeitar(curso)}
+                        leftIcon={
+                          <XCircle className="w-3.5 h-3.5" />
+                        }
+                        className="!text-rose-600 !border-rose-200 hover:!bg-rose-50"
+                      >
+                        Rejeitar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAprovar(curso)}
+                        leftIcon={
+                          <CheckCircle className="w-3.5 h-3.5" />
+                        }
+                      >
+                        Aprovar
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      Desde{' '}
+                      {format(
+                        new Date(curso.dataCriacao),
+                        'MMM yyyy',
+                        { locale: pt }
+                      )}
+                    </span>
+                  )}
                 </div>
               </Card>
             ))}

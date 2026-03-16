@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import { RoleSwitcher } from './RoleSwitcher';
 import {
   LayoutDashboard,
   Scale,
@@ -74,6 +75,9 @@ export function AdminSidebar() {
           )}
         </button>
       </div>
+
+      {/* Alternar Papel */}
+      {!isCollapsed && <RoleSwitcher />}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

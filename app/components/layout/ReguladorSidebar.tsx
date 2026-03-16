@@ -4,11 +4,13 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import { RoleSwitcher } from './RoleSwitcher';
 import {
   LayoutDashboard,
   Building2,
   Users,
   BookOpen,
+  History,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
@@ -21,6 +23,7 @@ const menuItems = [
   { href: '/regulador/centros', label: 'Centros de Formação', icon: Building2 },
   { href: '/regulador/formadores', label: 'Formadores', icon: Users },
   { href: '/regulador/cursos', label: 'Cursos', icon: BookOpen },
+  { href: '/regulador/auditoria', label: 'Auditoria', icon: History },
 ];
 
 export function ReguladorSidebar() {
@@ -92,6 +95,9 @@ export function ReguladorSidebar() {
           </div>
         </div>
       )}
+
+      {/* Alternar Papel */}
+      {!isCollapsed && <RoleSwitcher />}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

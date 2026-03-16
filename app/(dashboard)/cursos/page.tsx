@@ -1,24 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/layout';
 import { Button, Card, CardContent, Badge, getStatusBadgeVariant, getStatusLabel, EmptyState, Modal, ModalFooter } from '../../components/ui';
-import { Plus, Search, BookOpen, Clock, Layers, MoreVertical, Edit, Trash2, Eye, Filter } from 'lucide-react';
+import { Plus, Search, BookOpen, Clock, Layers, MoreVertical, Edit, Trash2, Eye, Filter, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Course, Status } from '../../types';
 
 export default function CursosPage() {
+  const { user } = useAuth();
   const { state, eliminarCurso, atualizarCurso } = useApp();
+  const isFormando = user?.role === 'formando';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Status | 'todos'>('todos');
   const [selectedCurso, setSelectedCurso] = useState<Course | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMenu, setShowMenu] = useState<string | null>(null);
 
-  const filteredCursos = state.cursos.filter((curso) => {
+  // Formandos só vêem cursos em que estão inscritos
+  const cursosFormando = useMemo(() => {
+    if (!isFormando || !user) return null;
+    return state.inscricoes
+      .filter((i) => i.formandoId === user.id && i.status === 'ativo')
+      .map((i) => i.cursoId);
+  }, [isFormando, user, state.inscricoes]);
+
+  const cursosBase = isFormando && cursosFormando
+    ? state.cursos.filter((c) => cursosFormando.includes(c.id))
+    : state.cursos;
+
+  const filteredCursos = cursosBase.filter((curso) => {
     const matchesSearch =
       curso.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       curso.codigo.toLowerCase().includes(searchTerm.toLowerCase());
@@ -44,6 +59,7 @@ export default function CursosPage() {
       <Header
         title="Cursos"
         subtitle="Gerir cursos formativos e respetivos módulos"
+        breadcrumbs={[{ label: 'Cursos' }]}
       />
 
       <div className="p-8">
@@ -69,16 +85,19 @@ export default function CursosPage() {
               >
                 <option value="todos">Todos os estados</option>
                 <option value="rascunho">Rascunho</option>
+                <option value="aguardando_aprovacao">Aguardando Aprovação</option>
                 <option value="ativo">Ativo</option>
                 <option value="arquivado">Arquivado</option>
                 <option value="cancelado">Cancelado</option>
               </select>
             </div>
-            <Link href="/cursos/novo">
-              <Button leftIcon={<Plus className="w-4 h-4" />}>
-                Novo Curso
-              </Button>
-            </Link>
+            {!isFormando && (
+              <Link href="/cursos/novo">
+                <Button leftIcon={<Plus className="w-4 h-4" />}>
+                  Novo Curso
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -136,42 +155,47 @@ export default function CursosPage() {
                             <Eye className="w-4 h-4" />
                             Ver detalhes
                           </Link>
-                          <Link
-                            href={`/cursos/${curso.id}/editar`}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            <Edit className="w-4 h-4" />
-                            Editar
-                          </Link>
-                          <hr className="my-1 border-slate-200" />
-                          {curso.status !== 'ativo' && (
-                            <button
-                              onClick={() => handleStatusChange(curso, 'ativo')}
-                              className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 w-full text-left"
-                            >
-                              Ativar curso
-                            </button>
+                          {!isFormando && (
+                            <>
+                              <Link
+                                href={`/cursos/${curso.id}/editar`}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Editar
+                              </Link>
+                              <hr className="my-1 border-slate-200" />
+                              {(curso.status === 'rascunho') && (
+                                <button
+                                  onClick={() => handleStatusChange(curso, 'aguardando_aprovacao')}
+                                  className="flex items-center gap-2 px-3 py-2 text-sm text-violet-600 hover:bg-violet-50 w-full text-left"
+                                >
+                                  <Send className="w-4 h-4" />
+                                  Submeter para Aprovação
+                                </button>
+                              )}
+                              {curso.status !== 'arquivado' && (
+                                <button
+                                  onClick={() => handleStatusChange(curso, 'arquivado')}
+                                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 w-full text-left"
+                                >
+                                  Arquivar
+                                </button>
+                              )}
+                              <hr className="my-1 border-slate-200" />
+                              <button
+                                onClick={() => {
+                                  setSelectedCurso(curso);
+                                  setShowDeleteModal(true);
+                                  setShowMenu(null);
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 w-full text-left"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Eliminar
+                              </button>
+                            </>
                           )}
-                          {curso.status !== 'arquivado' && (
-                            <button
-                              onClick={() => handleStatusChange(curso, 'arquivado')}
-                              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 w-full text-left"
-                            >
-                              Arquivar
-                            </button>
-                          )}
-                          <hr className="my-1 border-slate-200" />
-                          <button
-                            onClick={() => {
-                              setSelectedCurso(curso);
-                              setShowDeleteModal(true);
-                              setShowMenu(null);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 w-full text-left"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Eliminar
-                          </button>
                         </div>
                       )}
                     </div>

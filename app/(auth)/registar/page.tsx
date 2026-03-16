@@ -52,7 +52,7 @@ export default function RegistarPage() {
       return false;
     }
     if (formData.centroNif.length < 11) {
-      setError('NUI inválido (deve ter pelo menos 11 dígitos)');
+      setError('NIF inválido (deve ter pelo menos 11 dígitos)');
       return false;
     }
     // Validar email
@@ -210,7 +210,7 @@ export default function RegistarPage() {
                       />
                     </div>
                     <Input
-                      label="NUI *"
+                      label="NIF *"
                       placeholder="12345678901"
                       value={formData.centroNif}
                       onChange={(e) => updateField('centroNif', e.target.value)}

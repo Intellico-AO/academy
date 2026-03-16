@@ -11,14 +11,18 @@ import {
   Worksheet,
   AuditLog,
   AuditAction,
+  Status,
   CourseFormData,
   ProgramFormData,
   SessionFormData,
   DemonstrationPlanFormData,
   WorksheetFormData,
   DashboardStats,
+  Enrollment,
+  UserAccount,
 } from '../types';
 import * as firebaseService from '../lib/firebaseService';
+import { useAuth } from './AuthContext';
 
 // ==========================================
 // ESTADO
@@ -32,6 +36,8 @@ interface AppState {
   planosDemonstracao: DemonstrationPlan[];
   fichasTrabalho: Worksheet[];
   auditLogs: AuditLog[];
+  inscricoes: Enrollment[];
+  formandos: UserAccount[];
   utilizadorAtual: string;
   isLoading: boolean;
   isInitialized: boolean;
@@ -45,6 +51,8 @@ const initialState: AppState = {
   planosDemonstracao: [],
   fichasTrabalho: [],
   auditLogs: [],
+  inscricoes: [],
+  formandos: [],
   utilizadorAtual: 'Admin',
   isLoading: true,
   isInitialized: false,
@@ -76,7 +84,12 @@ type Action =
   | { type: 'ADD_FICHA_TRABALHO'; payload: Worksheet }
   | { type: 'UPDATE_FICHA_TRABALHO'; payload: Worksheet }
   | { type: 'DELETE_FICHA_TRABALHO'; payload: string }
-  | { type: 'ADD_AUDIT_LOG'; payload: AuditLog };
+  | { type: 'ADD_AUDIT_LOG'; payload: AuditLog }
+  | { type: 'ADD_FORMANDO'; payload: UserAccount }
+  | { type: 'UPDATE_FORMANDO'; payload: UserAccount }
+  | { type: 'ADD_INSCRICAO'; payload: Enrollment }
+  | { type: 'DELETE_INSCRICAO'; payload: string }
+  | { type: 'UPDATE_INSCRICAO'; payload: Enrollment };
 
 // ==========================================
 // REDUCER
@@ -176,6 +189,29 @@ function appReducer(state: AppState, action: Action): AppState {
       };
     case 'ADD_AUDIT_LOG':
       return { ...state, auditLogs: [action.payload, ...state.auditLogs] };
+    case 'ADD_FORMANDO':
+      return { ...state, formandos: [...state.formandos, action.payload] };
+    case 'UPDATE_FORMANDO':
+      return {
+        ...state,
+        formandos: state.formandos.map((f) =>
+          f.id === action.payload.id ? action.payload : f
+        ),
+      };
+    case 'ADD_INSCRICAO':
+      return { ...state, inscricoes: [...state.inscricoes, action.payload] };
+    case 'DELETE_INSCRICAO':
+      return {
+        ...state,
+        inscricoes: state.inscricoes.filter((i) => i.id !== action.payload),
+      };
+    case 'UPDATE_INSCRICAO':
+      return {
+        ...state,
+        inscricoes: state.inscricoes.map((i) =>
+          i.id === action.payload.id ? action.payload : i
+        ),
+      };
     default:
       return state;
   }
@@ -200,7 +236,7 @@ interface AppContextType {
   getPrograma: (id: string) => Program | undefined;
   // Sessões
   adicionarSessao: (data: SessionFormData) => Promise<Session>;
-  atualizarSessao: (id: string, data: Partial<SessionFormData>) => Promise<void>;
+  atualizarSessao: (id: string, data: Partial<SessionFormData & { status: Status }>) => Promise<void>;
   eliminarSessao: (id: string) => Promise<void>;
   getSessao: (id: string) => Session | undefined;
   // Planos de Sessão
@@ -212,7 +248,7 @@ interface AppContextType {
   adicionarPlanoDemonstracao: (sessaoId: string, data: DemonstrationPlanFormData) => Promise<DemonstrationPlan>;
   atualizarPlanoDemonstracao: (id: string, data: Partial<DemonstrationPlanFormData>) => Promise<void>;
   eliminarPlanoDemonstracao: (id: string) => Promise<void>;
-  getPlanoDemonstracao: (sessaoId: string) => DemonstrationPlan | undefined;
+  getPlanosDemonstracao: (sessaoId: string) => DemonstrationPlan[];
   // Fichas de Trabalho
   adicionarFichaTrabalho: (sessaoId: string, data: WorksheetFormData) => Promise<Worksheet>;
   atualizarFichaTrabalho: (id: string, data: Partial<WorksheetFormData>) => Promise<void>;
@@ -233,13 +269,28 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const { user, center } = useAuth();
+  const centroId = center?.id || user?.centroFormacaoId || '';
 
-  // Carregar dados do Firebase na inicialização
+  // Carregar dados do Firebase na inicialização (filtrado por centro)
   useEffect(() => {
+    if (!centroId) {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_INITIALIZED', payload: true });
+      return;
+    }
+
     const loadData = async () => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
-        const data = await firebaseService.loadAllData();
+        const data = await firebaseService.loadAllData(centroId);
+
+        // Filtrar entidades que não pertencem ao centro selecionado
+        data.cursos = data.cursos.filter((c) => c.centroFormacaoId === centroId);
+        data.programas = data.programas.filter((p) => p.centroFormacaoId === centroId);
+        data.sessoes = data.sessoes.filter((s) => s.centroFormacaoId === centroId);
+        data.inscricoes = data.inscricoes.filter((i) => i.centroFormacaoId === centroId);
+
         dispatch({ type: 'LOAD_DATA', payload: data });
       } catch (error) {
         console.error('Erro ao carregar dados do Firebase:', error);
@@ -249,18 +300,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     loadData();
-  }, []);
+  }, [centroId]);
 
   const refreshData = useCallback(async () => {
+    if (!centroId) return;
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const data = await firebaseService.loadAllData();
+      const data = await firebaseService.loadAllData(centroId);
+
+      data.cursos = data.cursos.filter((c) => c.centroFormacaoId === centroId);
+      data.programas = data.programas.filter((p) => p.centroFormacaoId === centroId);
+      data.sessoes = data.sessoes.filter((s) => s.centroFormacaoId === centroId);
+      data.inscricoes = data.inscricoes.filter((i) => i.centroFormacaoId === centroId);
+
       dispatch({ type: 'LOAD_DATA', payload: data });
     } catch (error) {
       console.error('Erro ao recarregar dados:', error);
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, []);
+  }, [centroId]);
 
   // Helper para adicionar log de auditoria
   const addAuditLog = useCallback(
@@ -282,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         alteracoesAntes: antes,
         alteracoesDepois: depois,
         utilizador: state.utilizadorAtual,
-        centroFormacaoId: '',
+        centroFormacaoId: centroId,
         dataHora: new Date().toISOString(),
       };
       
@@ -308,7 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const cursoData: Omit<Course, 'id'> = {
         ...data,
         duracaoTotal,
-        centroFormacaoId: '',
+        centroFormacaoId: centroId,
         modulos: data.modulos.map((m, i) => ({
           ...m,
           id: uuidv4(),
@@ -402,7 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const programaData: Omit<Program, 'id'> = {
         ...data,
         duracaoTotal,
-        centroFormacaoId: '',
+        centroFormacaoId: centroId,
         status: 'rascunho',
         dataCriacao: agora,
         dataAtualizacao: agora,
@@ -480,7 +539,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const sessaoData: Omit<Session, 'id'> = {
         ...data,
-        centroFormacaoId: '',
+        centroFormacaoId: centroId,
         atividades: data.atividades.map((a, i) => ({
           ...a,
           id: uuidv4(),
@@ -490,7 +549,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...r,
           id: uuidv4(),
         })),
-        status: 'rascunho',
+        status: 'aguardando_aprovacao',
         dataCriacao: agora,
         dataAtualizacao: agora,
         criadoPor: state.utilizadorAtual,
@@ -498,9 +557,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const id = await firebaseService.createSession(sessaoData);
       const sessao = { ...sessaoData, id };
-      
+
       dispatch({ type: 'ADD_SESSAO', payload: sessao });
-      await addAuditLog('sessao', id, sessao.nome, 'criar', `Sessão "${sessao.nome}" criada`, null, sessao as unknown as Record<string, unknown>);
+      await addAuditLog('sessao', id, sessao.nome, 'criar', `Sessão "${sessao.nome}" submetida para aprovação`, null, sessao as unknown as Record<string, unknown>);
       
       return sessao;
     },
@@ -508,7 +567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const atualizarSessao = useCallback(
-    async (id: string, data: Partial<SessionFormData>) => {
+    async (id: string, data: Partial<SessionFormData & { status: Status }>) => {
       const sessaoExistente = state.sessoes.find((s) => s.id === id);
       if (!sessaoExistente) return;
 
@@ -582,10 +641,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const id = await firebaseService.createSessionPlan(planoData);
       const plano = { ...planoData, id };
-      
+
       dispatch({ type: 'ADD_PLANO_SESSAO', payload: plano });
       await addAuditLog('plano', id, sessao?.nome || 'Plano de Sessão', 'criar', `Plano de sessão criado para "${sessao?.nome}"`, null, plano as unknown as Record<string, unknown>);
-      
+
       return plano;
     },
     [state.utilizadorAtual, state.sessoes, addAuditLog]
@@ -667,7 +726,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       dispatch({ type: 'ADD_PLANO_DEMONSTRACAO', payload: plano });
       await addAuditLog('demonstracao', id, plano.titulo, 'criar', `Plano de demonstração "${plano.titulo}" criado para "${sessao?.nome}"`, null, plano as unknown as Record<string, unknown>);
-      
+
       return plano;
     },
     [state.utilizadorAtual, state.sessoes, addAuditLog]
@@ -723,8 +782,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.planosDemonstracao, addAuditLog]
   );
 
-  const getPlanoDemonstracao = useCallback(
-    (sessaoId: string) => state.planosDemonstracao.find((p) => p.sessaoId === sessaoId),
+  const getPlanosDemonstracao = useCallback(
+    (sessaoId: string) => state.planosDemonstracao.filter((p) => p.sessaoId === sessaoId),
     [state.planosDemonstracao]
   );
 
@@ -757,7 +816,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       dispatch({ type: 'ADD_FICHA_TRABALHO', payload: ficha });
       await addAuditLog('ficha', id, ficha.titulo, 'criar', `Ficha de trabalho "${ficha.titulo}" criada para "${sessao?.nome}"`, null, ficha as unknown as Record<string, unknown>);
-      
+
       return ficha;
     },
     [state.utilizadorAtual, state.sessoes, addAuditLog]
@@ -856,7 +915,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalProgramas: state.programas.length,
       programasAtivos: state.programas.filter((p) => p.status === 'ativo').length,
       totalSessoes: state.sessoes.length,
-      sessoesAgendadas: state.sessoes.filter((s) => new Date(s.dataInicio) >= hoje).length,
+      sessoesAgendadas: state.sessoes.filter((s) => new Date(s.data) >= hoje).length,
       horasFormacao: state.cursos.reduce((acc, c) => acc + c.duracaoTotal, 0),
       totalFormadores: 0,
     };
@@ -884,7 +943,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     adicionarPlanoDemonstracao,
     atualizarPlanoDemonstracao,
     eliminarPlanoDemonstracao,
-    getPlanoDemonstracao,
+    getPlanosDemonstracao,
     adicionarFichaTrabalho,
     atualizarFichaTrabalho,
     eliminarFichaTrabalho,

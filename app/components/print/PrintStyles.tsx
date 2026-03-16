@@ -10,12 +10,28 @@ export function PrintStyles() {
           background: white !important;
         }
 
-        .no-print {
-          display: none !important;
+        /* Esconder TUDO por defeito */
+        body > * {
+          visibility: hidden !important;
+        }
+
+        /* Mostrar apenas o conteúdo de impressão */
+        .print-only,
+        .print-only * {
+          visibility: visible !important;
         }
 
         .print-only {
           display: block !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          z-index: 99999 !important;
+        }
+
+        .no-print {
+          display: none !important;
         }
 
         .print-container {

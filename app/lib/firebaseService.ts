@@ -22,6 +22,8 @@ import {
   DemonstrationPlan,
   Worksheet,
   AuditLog,
+  Enrollment,
+  UserAccount,
 } from '../types';
 
 // Collection names
@@ -33,6 +35,7 @@ const COLLECTIONS = {
   DEMONSTRATION_PLANS: 'demonstrationPlans',
   WORKSHEETS: 'worksheets',
   AUDIT_LOGS: 'auditLogs',
+  ENROLLMENTS: 'enrollments',
 } as const;
 
 // Helper to get db with error handling
@@ -60,10 +63,17 @@ function convertTimestamps<T extends DocumentData>(data: T): T {
 // CURSOS
 // ==========================================
 
-export async function getCourses(): Promise<Course[]> {
+export async function getCourses(centroFormacaoId?: string): Promise<Course[]> {
   const db = getFirebaseDb();
   if (!db) return [];
-  const querySnapshot = await getDocs(collection(db, COLLECTIONS.COURSES));
+  const constraints: QueryConstraint[] = [];
+  if (centroFormacaoId) {
+    constraints.push(where('centroFormacaoId', '==', centroFormacaoId));
+  }
+  const q = constraints.length > 0
+    ? query(collection(db, COLLECTIONS.COURSES), ...constraints)
+    : collection(db, COLLECTIONS.COURSES);
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...convertTimestamps(docSnap.data()),
@@ -102,10 +112,17 @@ export async function deleteCourse(id: string): Promise<void> {
 // PROGRAMAS
 // ==========================================
 
-export async function getPrograms(): Promise<Program[]> {
+export async function getPrograms(centroFormacaoId?: string): Promise<Program[]> {
   const db = getFirebaseDb();
   if (!db) return [];
-  const querySnapshot = await getDocs(collection(db, COLLECTIONS.PROGRAMS));
+  const constraints: QueryConstraint[] = [];
+  if (centroFormacaoId) {
+    constraints.push(where('centroFormacaoId', '==', centroFormacaoId));
+  }
+  const q = constraints.length > 0
+    ? query(collection(db, COLLECTIONS.PROGRAMS), ...constraints)
+    : collection(db, COLLECTIONS.PROGRAMS);
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...convertTimestamps(docSnap.data()),
@@ -144,10 +161,17 @@ export async function deleteProgram(id: string): Promise<void> {
 // SESSÕES
 // ==========================================
 
-export async function getSessions(): Promise<Session[]> {
+export async function getSessions(centroFormacaoId?: string): Promise<Session[]> {
   const db = getFirebaseDb();
   if (!db) return [];
-  const querySnapshot = await getDocs(collection(db, COLLECTIONS.SESSIONS));
+  const constraints: QueryConstraint[] = [];
+  if (centroFormacaoId) {
+    constraints.push(where('centroFormacaoId', '==', centroFormacaoId));
+  }
+  const q = constraints.length > 0
+    ? query(collection(db, COLLECTIONS.SESSIONS), ...constraints)
+    : collection(db, COLLECTIONS.SESSIONS);
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((docSnap) => ({
     id: docSnap.id,
     ...convertTimestamps(docSnap.data()),
@@ -356,12 +380,15 @@ export async function deleteWorksheet(id: string): Promise<void> {
 // AUDIT LOGS
 // ==========================================
 
-export async function getAuditLogs(filters?: { entidadeTipo?: string; entidadeId?: string }): Promise<AuditLog[]> {
+export async function getAuditLogs(filters?: { entidadeTipo?: string; entidadeId?: string; centroFormacaoId?: string }): Promise<AuditLog[]> {
   const db = getFirebaseDb();
   if (!db) return [];
-  
+
   const constraints: QueryConstraint[] = [orderBy('dataHora', 'desc')];
-  
+
+  if (filters?.centroFormacaoId) {
+    constraints.unshift(where('centroFormacaoId', '==', filters.centroFormacaoId));
+  }
   if (filters?.entidadeTipo) {
     constraints.unshift(where('entidadeTipo', '==', filters.entidadeTipo));
   }
@@ -385,18 +412,60 @@ export async function createAuditLog(log: Omit<AuditLog, 'id'>): Promise<string>
 }
 
 // ==========================================
+// INSCRIÇÕES (leitura para contexto)
+// ==========================================
+
+export async function getEnrollments(centroFormacaoId?: string): Promise<Enrollment[]> {
+  const db = getFirebaseDb();
+  if (!db) return [];
+  const constraints: QueryConstraint[] = [];
+  if (centroFormacaoId) {
+    constraints.push(where('centroFormacaoId', '==', centroFormacaoId));
+  }
+  const q = constraints.length > 0
+    ? query(collection(db, COLLECTIONS.ENROLLMENTS), ...constraints)
+    : collection(db, COLLECTIONS.ENROLLMENTS);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...convertTimestamps(docSnap.data()),
+  })) as Enrollment[];
+}
+
+// ==========================================
+// FORMANDOS (leitura para contexto)
+// ==========================================
+
+export async function getFormandos(centroFormacaoId?: string): Promise<UserAccount[]> {
+  const db = getFirebaseDb();
+  if (!db) return [];
+  const constraints: QueryConstraint[] = [where('role', '==', 'formando')];
+  if (centroFormacaoId) {
+    constraints.push(where('centroFormacaoId', '==', centroFormacaoId));
+  }
+  const q = query(collection(db, 'users'), ...constraints);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...convertTimestamps(docSnap.data()),
+  })) as UserAccount[];
+}
+
+// ==========================================
 // CARREGAR TODOS OS DADOS
 // ==========================================
 
-export async function loadAllData() {
-  const [courses, programs, sessions, sessionPlans, demonstrationPlans, worksheets, auditLogs] = await Promise.all([
-    getCourses(),
-    getPrograms(),
-    getSessions(),
+export async function loadAllData(centroFormacaoId?: string) {
+  const [courses, programs, sessions, sessionPlans, demonstrationPlans, worksheets, auditLogs, enrollments, formandos] = await Promise.all([
+    getCourses(centroFormacaoId),
+    getPrograms(centroFormacaoId),
+    getSessions(centroFormacaoId),
     getSessionPlans(),
     getDemonstrationPlans(),
     getWorksheets(),
-    getAuditLogs(),
+    getAuditLogs(centroFormacaoId ? { centroFormacaoId } : undefined),
+    getEnrollments(centroFormacaoId),
+    getFormandos(centroFormacaoId),
   ]);
 
   return {
@@ -407,5 +476,7 @@ export async function loadAllData() {
     planosDemonstracao: demonstrationPlans,
     fichasTrabalho: worksheets,
     auditLogs,
+    inscricoes: enrollments,
+    formandos,
   };
 }

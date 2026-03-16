@@ -65,22 +65,16 @@ export async function checkEmailStatus(email: string): Promise<EmailStatus> {
       trainerDoc: null
     };
 
-  let userDoc = await getUserByEmail(email);
-  let hasAccount = false;
-
-  console.log({ userDoc });
-
-  if (userDoc) {
-    hasAccount = true;
-
-  }
+  const userDoc = await getUserByEmail(email);
+  // hasAccount = true apenas se tem uid (já activou a conta)
+  const hasAccount = !!userDoc?.uid;
 
   let hasTrainer = false;
   let trainerDoc: Trainer | null = null;
 
   if (!userDoc) {
     trainerDoc = await trainersService.getTrainerByEmail(email);
-    hasTrainer = !!trainerDoc && !trainerDoc.userId; // Tem formador mas sem conta de utilizador
+    hasTrainer = !!trainerDoc && !trainerDoc.userId;
   }
 
   return { hasAccount, hasTrainer, userDoc, trainerDoc };
@@ -226,7 +220,7 @@ export async function registerTrainingCenter(data: RegisterFormData): Promise<{
     telefoneResponsavel: data.responsavelTelefone,
     certificacoes: [],
     areasFormacao: [],
-    status: 'ativo',
+    status: 'inativo',
     dataCriacao: now,
     dataAtualizacao: now,
   };
@@ -240,7 +234,7 @@ export async function registerTrainingCenter(data: RegisterFormData): Promise<{
     uid: userCredential.user.uid,
     nome: data.responsavelNome,
     email: data.responsavelEmail,
-    role: 'admin',
+    role: 'responsavel',
     centroFormacaoId: center.id,
     ativo: true,
     dataCriacao: now,
@@ -429,6 +423,32 @@ export async function getAllAdminUsers(): Promise<UserAccount[]> {
   })) as UserAccount[];
 }
 
+export async function createFormandoUser(
+  email: string,
+  nome: string,
+  centroFormacaoId: string,
+  dataNascimento?: string
+): Promise<UserAccount> {
+  const db = requireDb();
+
+  const now = new Date().toISOString();
+  const userRef = doc(collection(db, 'users'));
+  const user: UserAccount = {
+    id: userRef.id,
+    nome,
+    email,
+    role: 'formando',
+    centroFormacaoId,
+    ativo: true,
+    dataNascimento,
+    dataCriacao: now,
+  };
+
+  await setDoc(userRef, user);
+
+  return user;
+}
+
 export async function createAdminUser(
   email: string,
   nome: string,
@@ -503,6 +523,32 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   const querySnapshot = await getDocs(q);
 
   return !querySnapshot.empty;
+}
+
+// Criar membro da equipa (responsável ou assistente) via pré-registo
+export async function createTeamMember(
+  email: string,
+  nome: string,
+  role: 'responsavel' | 'assistente',
+  centroFormacaoId: string
+): Promise<UserAccount> {
+  const db = requireDb();
+
+  const now = new Date().toISOString();
+  const userRef = doc(collection(db, 'users'));
+  const user: UserAccount = {
+    id: userRef.id,
+    nome,
+    email,
+    role,
+    centroFormacaoId,
+    ativo: true,
+    dataCriacao: now,
+  };
+
+  await setDoc(userRef, user);
+
+  return user;
 }
 
 export async function checkNifExists(nif: string): Promise<boolean> {

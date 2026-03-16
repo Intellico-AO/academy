@@ -11,6 +11,8 @@ import { Modal, ModalFooter } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import * as authService from '../../lib/authService';
+import { Breadcrumb } from '../ui/Breadcrumb';
+import type { BreadcrumbItem } from '../ui/Breadcrumb';
 
 const profileSchema = z.object({
   nome: z.string().min(1, 'O nome é obrigatório'),
@@ -22,9 +24,10 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, breadcrumbs }: HeaderProps) {
   const { user, refreshUser, signOut } = useAuth();
   const toast = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -57,12 +60,16 @@ export function Header({ title, subtitle }: HeaderProps) {
     switch (role) {
       case 'admin':
         return 'Administrador';
-      case 'gestor':
-        return 'Gestor';
+      case 'responsavel':
+        return 'Responsável';
+      case 'assistente':
+        return 'Assistente';
       case 'formador':
         return 'Formador';
       case 'regulador':
         return 'Regulador';
+      case 'formando':
+        return 'Formando';
       default:
         return 'Utilizador';
     }
@@ -107,6 +114,9 @@ export function Header({ title, subtitle }: HeaderProps) {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200">
         <div className="flex items-center justify-between px-8 py-4">
           <div>
+            {breadcrumbs && breadcrumbs.length > 0 && (
+              <Breadcrumb items={breadcrumbs} />
+            )}
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               {title}
             </h1>

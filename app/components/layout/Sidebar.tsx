@@ -9,30 +9,41 @@ import {
   BookOpen,
   Layers,
   Calendar,
-  ClipboardList,
-  History,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
   Users,
   Building2,
   LogOut,
+  UserCog,
+  ChevronsUpDown,
 } from 'lucide-react';
 
-const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-  { href: '/cursos', label: 'Cursos', icon: BookOpen, adminOnly: false },
-  { href: '/programas', label: 'Programas', icon: Layers, adminOnly: false },
-  { href: '/sessoes', label: 'Sessões', icon: Calendar, adminOnly: false },
-  { href: '/planos', label: 'Planos de Sessão', icon: ClipboardList, adminOnly: false },
-  { href: '/formadores', label: 'Formadores', icon: Users, adminOnly: true },
-  { href: '/auditoria', label: 'Auditoria', icon: History, adminOnly: true },
+import type { UserRole } from '../../types';
+import { RoleSwitcher } from './RoleSwitcher';
+
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles?: UserRole[]; // Se undefined, visível para todos os papéis do dashboard
+}
+
+const menuItems: MenuItem[] = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/cursos', label: 'Cursos', icon: BookOpen, roles: ['responsavel', 'assistente', 'formador', 'formando'] },
+  { href: '/programas', label: 'Programas', icon: Layers, roles: ['responsavel', 'formador'] },
+  { href: '/sessoes', label: 'Sessões', icon: Calendar, roles: ['responsavel', 'formador', 'formando'] },
+  { href: '/formandos', label: 'Formandos', icon: GraduationCap, roles: ['responsavel', 'assistente'] },
+  { href: '/formadores', label: 'Formadores', icon: Users, roles: ['responsavel'] },
+  { href: '/equipa', label: 'Equipa', icon: UserCog, roles: ['responsavel'] },
 ];
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
-  const { user, center, signOut } = useAuth();
+  const { user, center, centers, switchCenter, signOut } = useAuth();
+  const [showCenterDropdown, setShowCenterDropdown] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -84,25 +95,69 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Centro de Formação Info */}
+      {/* Alternar Papel */}
+      {!isCollapsed && <RoleSwitcher />}
+
+      {/* Centro de Formação */}
       {!isCollapsed && center && (
         <div className="px-4 py-3 border-b border-slate-700/50">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-emerald-400" />
+          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-2 px-2">
+            Centro de Formação
+          </p>
+          {centers.length > 1 ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowCenterDropdown(!showCenterDropdown)}
+                className="flex items-center gap-3 w-full p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium text-white truncate">{center.nome}</p>
+                </div>
+                <ChevronsUpDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+
+              {showCenterDropdown && (
+                <div className="absolute left-0 right-0 mt-1 bg-slate-800 rounded-lg border border-slate-700 shadow-xl z-50 overflow-hidden">
+                  {centers.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        switchCenter(c.id);
+                        setShowCenterDropdown(false);
+                      }}
+                      className={`flex items-center gap-3 w-full px-3 py-2.5 text-left transition-colors ${
+                        c.id === center.id
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'text-slate-300 hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">{c.nome}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{center.nome}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+          ) : (
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{center.nome}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems
-          .filter((item) => !item.adminOnly || user?.role === 'admin')
+          .filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)))
           .map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 

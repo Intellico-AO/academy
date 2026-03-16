@@ -26,7 +26,7 @@ export default function EditarFormadorPage({ params }: PageProps) {
 
   // Verificar se é admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (user && user.role !== 'responsavel') {
       router.push('/');
       toast.error('Acesso negado', 'Apenas o responsável pode editar formadores.');
     }
@@ -135,13 +135,23 @@ export default function EditarFormadorPage({ params }: PageProps) {
     }
   };
 
+  const buildAiContext = () => {
+    const parts: string[] = ['FORMULÁRIO: Formador'];
+    if (formData.nome) parts.push(`Nome: ${formData.nome}`);
+    if (formData.habilitacoes) parts.push(`Habilitações: ${formData.habilitacoes}`);
+    if (formData.certificacaoPedagogica) parts.push(`Certificação pedagógica: ${formData.certificacaoPedagogica}`);
+    if (formData.areasCompetencia.length > 0) parts.push(`Áreas de competência: ${formData.areasCompetencia.join(', ')}`);
+    if (formData.experienciaAnos) parts.push(`Experiência: ${formData.experienciaAnos} anos`);
+    return parts.join('\n');
+  };
+
   // Verificar permissões antes de renderizar
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== 'responsavel') {
     return null; // Será redirecionado pelo useEffect
   }
 
   // Verificar permissões antes de renderizar
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== 'responsavel') {
     return null; // Será redirecionado pelo useEffect
   }
 
@@ -172,7 +182,7 @@ export default function EditarFormadorPage({ params }: PageProps) {
 
   return (
     <>
-      <Header title="Editar Formador" subtitle={trainer.nome} />
+      <Header title="Editar Formador" subtitle={trainer.nome} breadcrumbs={[{ label: 'Formadores', href: '/formadores' }, { label: 'Editar' }]} />
 
       <div className="p-8 max-w-4xl">
         <button
@@ -228,12 +238,12 @@ export default function EditarFormadorPage({ params }: PageProps) {
                 />
                 <Input
                   label="Telefone"
-                  placeholder="+351 XXX XXX XXX"
+                  placeholder="+244 XXX XXX XXX"
                   value={formData.telefone}
                   onChange={(e) => setFormData((prev) => ({ ...prev, telefone: e.target.value }))}
                 />
                 <Input
-                  label="NUI"
+                  label="NIF"
                   placeholder="123456789"
                   value={formData.nif}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nif: e.target.value }))}
@@ -385,6 +395,8 @@ export default function EditarFormadorPage({ params }: PageProps) {
                 value={formData.curriculo || ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, curriculo: e.target.value }))}
                 rows={5}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, curriculo: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>

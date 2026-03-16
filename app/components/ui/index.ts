@@ -7,3 +7,5 @@ export { Badge, getStatusBadgeVariant, getStatusLabel } from './Badge';
 export { Modal, ModalFooter } from './Modal';
 export { EmptyState } from './EmptyState';
 export { LoadingSpinner, FullPageLoader } from './LoadingSpinner';
+export { Breadcrumb } from './Breadcrumb';
+export type { BreadcrumbItem } from './Breadcrumb';

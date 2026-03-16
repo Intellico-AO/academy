@@ -3,10 +3,11 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../../context/AuthContext';
 import { useApp } from '../../../context/AppContext';
 import { Header } from '../../../components/layout';
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge, getStatusBadgeVariant, getStatusLabel } from '../../../components/ui';
-import { ArrowLeft, Edit, Clock, Users, Award, BookOpen, Target, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, Users, Award, BookOpen, Target, FileText, CheckCircle, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
@@ -17,7 +18,9 @@ interface PageProps {
 export default function CursoDetalhesPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const { getCurso, getAuditLogs } = useApp();
+  const isFormando = user?.role === 'formando';
 
   const curso = getCurso(id);
   const auditLogs = getAuditLogs({ entidadeId: id });
@@ -41,6 +44,7 @@ export default function CursoDetalhesPage({ params }: PageProps) {
       <Header
         title={curso.nome}
         subtitle={`Código: ${curso.codigo}`}
+        breadcrumbs={[{ label: 'Cursos', href: '/cursos' }, { label: curso.nome }]}
       />
 
       <div className="p-8">
@@ -57,11 +61,13 @@ export default function CursoDetalhesPage({ params }: PageProps) {
             <Badge variant={getStatusBadgeVariant(curso.status)} className="text-sm px-3 py-1">
               {getStatusLabel(curso.status)}
             </Badge>
-            <Link href={`/cursos/${curso.id}/editar`}>
-              <Button leftIcon={<Edit className="w-4 h-4" />}>
-                Editar Curso
-              </Button>
-            </Link>
+            {!isFormando && (
+              <Link href={`/cursos/${curso.id}/editar`}>
+                <Button leftIcon={<Edit className="w-4 h-4" />}>
+                  Editar Curso
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -190,24 +196,8 @@ export default function CursoDetalhesPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            {/* Metodologia e Avaliação */}
+            {/* Avaliação e Certificação */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {curso.metodologia && (
-                <Card variant="bordered">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-emerald-500" />
-                      Metodologia
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-slate-600 whitespace-pre-wrap">
-                      {curso.metodologia}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
               {curso.avaliacao && (
                 <Card variant="bordered">
                   <CardHeader>
@@ -240,6 +230,18 @@ export default function CursoDetalhesPage({ params }: PageProps) {
                       <p className="text-sm text-slate-500">Duração Total</p>
                       <p className="font-semibold text-slate-900">
                         {curso.duracaoTotal} horas
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="p-2 rounded-lg bg-violet-100 text-violet-600">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Formador</p>
+                      <p className="font-medium text-slate-900">
+                        {curso.formadorNome || 'Não atribuído'}
                       </p>
                     </div>
                   </div>

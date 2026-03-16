@@ -1,17 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/layout';
 import { Button, Card, CardContent, Badge, getStatusBadgeVariant, getStatusLabel, EmptyState, Modal, ModalFooter } from '../../components/ui';
-import { Plus, Search, Calendar, Clock, MapPin, User, MoreVertical, Edit, Trash2, Eye, Filter } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, MapPin, User, MoreVertical, Edit, Trash2, Eye, Filter, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Session, Status, SessionType } from '../../types';
 
 export default function SessoesPage() {
-  const { state, eliminarSessao, getCurso } = useApp();
+  const { user } = useAuth();
+  const { state, eliminarSessao, atualizarSessao, getCurso } = useApp();
+  const isFormador = user?.role === 'formador';
+  const isFormando = user?.role === 'formando';
+  const isResponsavel = user?.role === 'responsavel';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Status | 'todos'>('todos');
   const [tipoFilter, setTipoFilter] = useState<SessionType | 'todos'>('todos');
@@ -19,7 +24,19 @@ export default function SessoesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMenu, setShowMenu] = useState<string | null>(null);
 
-  const filteredSessoes = state.sessoes.filter((sessao) => {
+  // Formandos só vêem sessões dos cursos em que estão inscritos
+  const cursosFormando = useMemo(() => {
+    if (!isFormando || !user) return null;
+    return state.inscricoes
+      .filter((i) => i.formandoId === user.id && i.status === 'ativo')
+      .map((i) => i.cursoId);
+  }, [isFormando, user, state.inscricoes]);
+
+  const sessoesBase = isFormando && cursosFormando
+    ? state.sessoes.filter((s) => cursosFormando.includes(s.cursoId))
+    : state.sessoes;
+
+  const filteredSessoes = sessoesBase.filter((sessao) => {
     const curso = getCurso(sessao.cursoId);
     const matchesSearch =
       sessao.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -32,7 +49,7 @@ export default function SessoesPage() {
 
   // Ordenar por data
   const sortedSessoes = [...filteredSessoes].sort(
-    (a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime()
+    (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
   );
 
   const handleDelete = () => {
@@ -41,6 +58,16 @@ export default function SessoesPage() {
       setShowDeleteModal(false);
       setSelectedSessao(null);
     }
+  };
+
+  const handleAprovar = async (sessao: Session) => {
+    await atualizarSessao(sessao.id, { status: 'ativo' });
+    setShowMenu(null);
+  };
+
+  const handleRejeitar = async (sessao: Session) => {
+    await atualizarSessao(sessao.id, { status: 'rascunho' });
+    setShowMenu(null);
   };
 
   const getTipoLabel = (tipo: SessionType) => {
@@ -70,6 +97,7 @@ export default function SessoesPage() {
       <Header
         title="Sessões Formativas"
         subtitle="Gerir e agendar sessões de formação"
+        breadcrumbs={[{ label: 'Sessões' }]}
       />
 
       <div className="p-8">
@@ -94,8 +122,9 @@ export default function SessoesPage() {
                 className="pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer"
               >
                 <option value="todos">Todos os estados</option>
+                <option value="aguardando_aprovacao">Aguardando Aprovação</option>
                 <option value="rascunho">Rascunho</option>
-                <option value="ativo">Agendado</option>
+                <option value="ativo">Aprovado</option>
                 <option value="arquivado">Concluído</option>
                 <option value="cancelado">Cancelado</option>
               </select>
@@ -110,11 +139,13 @@ export default function SessoesPage() {
               <option value="online">Online</option>
               <option value="hibrido">Híbrido</option>
             </select>
-            <Link href="/sessoes/nova">
-              <Button leftIcon={<Plus className="w-4 h-4" />}>
-                Nova Sessão
-              </Button>
-            </Link>
+            {isFormador && (
+              <Link href="/sessoes/nova">
+                <Button leftIcon={<Plus className="w-4 h-4" />}>
+                  Nova Sessão
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -128,14 +159,14 @@ export default function SessoesPage() {
                 ? 'Tente ajustar os filtros de pesquisa'
                 : 'Agende sessões formativas para ministrar os conteúdos dos cursos'
             }
-            actionLabel={!searchTerm && statusFilter === 'todos' && tipoFilter === 'todos' ? 'Agendar primeira sessão' : undefined}
-            onAction={!searchTerm && statusFilter === 'todos' && tipoFilter === 'todos' ? () => window.location.href = '/sessoes/nova' : undefined}
+            actionLabel={isFormador && !searchTerm && statusFilter === 'todos' && tipoFilter === 'todos' ? 'Agendar primeira sessão' : undefined}
+            onAction={isFormador && !searchTerm && statusFilter === 'todos' && tipoFilter === 'todos' ? () => window.location.href = '/sessoes/nova' : undefined}
           />
         ) : (
           <div className="space-y-4">
             {sortedSessoes.map((sessao, index) => {
               const curso = getCurso(sessao.cursoId);
-              const isUpcoming = new Date(sessao.dataInicio) >= new Date();
+              const isUpcoming = new Date(sessao.data) >= new Date();
 
               return (
                 <Card
@@ -149,13 +180,13 @@ export default function SessoesPage() {
                     {/* Date Column */}
                     <div className={`w-24 flex-shrink-0 flex flex-col items-center justify-center p-4 ${isUpcoming ? 'bg-violet-50' : 'bg-slate-50'}`}>
                       <span className={`text-3xl font-bold ${isUpcoming ? 'text-violet-600' : 'text-slate-400'}`}>
-                        {format(new Date(sessao.dataInicio), 'd')}
+                        {format(new Date(sessao.data), 'd')}
                       </span>
                       <span className={`text-sm font-medium uppercase ${isUpcoming ? 'text-violet-500' : 'text-slate-400'}`}>
-                        {format(new Date(sessao.dataInicio), 'MMM', { locale: pt })}
+                        {format(new Date(sessao.data), 'MMM', { locale: pt })}
                       </span>
                       <span className="text-xs text-slate-400 mt-1">
-                        {format(new Date(sessao.dataInicio), 'yyyy')}
+                        {format(new Date(sessao.data), 'yyyy')}
                       </span>
                     </div>
 
@@ -175,7 +206,7 @@ export default function SessoesPage() {
                             {getTipoLabel(sessao.tipo)}
                           </Badge>
                           <Badge variant={getStatusBadgeVariant(sessao.status)}>
-                            {sessao.status === 'ativo' ? 'Agendado' : getStatusLabel(sessao.status)}
+                            {sessao.status === 'ativo' ? 'Aprovado' : getStatusLabel(sessao.status)}
                           </Badge>
                           <div className="relative overflow-visible">
                             <button
@@ -193,32 +224,55 @@ export default function SessoesPage() {
                                   <Eye className="w-4 h-4" />
                                   Ver detalhes
                                 </Link>
-                                <Link
-                                  href={`/sessoes/${sessao.id}/editar`}
-                                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                  Editar
-                                </Link>
-                                <Link
-                                  href={`/planos?sessao=${sessao.id}`}
-                                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                                >
-                                  <Calendar className="w-4 h-4" />
-                                  Plano de Sessão
-                                </Link>
-                                <hr className="my-1 border-slate-200" />
-                                <button
-                                  onClick={() => {
-                                    setSelectedSessao(sessao);
-                                    setShowDeleteModal(true);
-                                    setShowMenu(null);
-                                  }}
-                                  className="flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 w-full text-left"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  Eliminar
-                                </button>
+                                {isResponsavel && sessao.status === 'aguardando_aprovacao' && (
+                                  <>
+                                    <hr className="my-1 border-slate-200" />
+                                    <button
+                                      onClick={() => handleAprovar(sessao)}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-600 hover:bg-emerald-50 w-full text-left"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      Aprovar
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejeitar(sessao)}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 w-full text-left"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                      Rejeitar
+                                    </button>
+                                  </>
+                                )}
+                                {isFormador && (
+                                  <>
+                                    <Link
+                                      href={`/sessoes/${sessao.id}/editar`}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                      Editar
+                                    </Link>
+                                    <Link
+                                      href={`/planos?sessao=${sessao.id}`}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                    >
+                                      <Calendar className="w-4 h-4" />
+                                      Plano de Sessão
+                                    </Link>
+                                    <hr className="my-1 border-slate-200" />
+                                    <button
+                                      onClick={() => {
+                                        setSelectedSessao(sessao);
+                                        setShowDeleteModal(true);
+                                        setShowMenu(null);
+                                      }}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 w-full text-left"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Eliminar
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>

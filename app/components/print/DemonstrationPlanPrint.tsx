@@ -22,7 +22,7 @@ export function DemonstrationPlanPrint({ sessao, plano, curso }: DemonstrationPl
           </div>
           <div style={{ textAlign: 'right', fontSize: '9pt', color: '#64748b' }}>
             <div><strong>Código:</strong> {curso?.codigo || 'N/A'}</div>
-            <div><strong>Data:</strong> {format(new Date(sessao.dataInicio), "d 'de' MMMM 'de' yyyy", { locale: pt })}</div>
+            <div><strong>Data:</strong> {format(new Date(sessao.data), "d 'de' MMMM 'de' yyyy", { locale: pt })}</div>
           </div>
         </div>
       </div>

@@ -49,6 +49,7 @@ export default function ProgramasPage() {
       <Header
         title="Programas Formativos"
         subtitle="Gerir programas de formação compostos por múltiplos cursos"
+        breadcrumbs={[{ label: 'Programas' }]}
       />
 
       <div className="p-8">

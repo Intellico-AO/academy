@@ -27,14 +27,14 @@ export default function FormadoresPage() {
 
   // Verificar se é admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (user && user.role !== 'responsavel') {
       router.push('/');
       toast.error('Acesso negado', 'Apenas o responsável pode gerir formadores.');
     }
   }, [user, router, toast]);
 
   useEffect(() => {
-    if (center?.id && user?.role === 'admin') {
+    if (center?.id && user?.role === 'responsavel') {
       loadTrainers();
     }
   }, [center?.id, user?.role]);
@@ -106,14 +106,14 @@ export default function FormadoresPage() {
   };
 
   // Verificar permissões antes de renderizar
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== 'responsavel') {
     return null; // Será redirecionado pelo useEffect
   }
 
   if (isLoading) {
     return (
       <>
-        <Header title="Formadores" subtitle="A carregar..." />
+        <Header title="Formadores" subtitle="A carregar..." breadcrumbs={[{ label: 'Formadores' }]} />
         <div className="p-8 flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin" />
         </div>
@@ -126,6 +126,7 @@ export default function FormadoresPage() {
       <Header
         title="Formadores"
         subtitle="Gerir formadores do centro de formação"
+        breadcrumbs={[{ label: 'Formadores' }]}
       />
 
       <div className="p-8">

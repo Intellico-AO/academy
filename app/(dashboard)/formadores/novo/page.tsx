@@ -19,7 +19,7 @@ export default function NovoFormadorPage() {
 
   // Verificar se é admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (user && user.role !== 'responsavel') {
       router.push('/');
       toast.error('Acesso negado', 'Apenas o responsável pode gerir formadores.');
     }
@@ -62,11 +62,11 @@ export default function NovoFormadorPage() {
         return;
       }
 
-      // Verificar se NUI já existe
+      // Verificar se NIF já existe
       if (formData.nif) {
         const nifExists = await trainersService.checkTrainerNifExists(center.id, formData.nif);
         if (nifExists) {
-          const msg = 'Já existe um formador com este NUI';
+          const msg = 'Já existe um formador com este NIF';
           setError(msg);
           toast.error('Erro de validação', msg);
           setIsSubmitting(false);
@@ -113,14 +113,24 @@ export default function NovoFormadorPage() {
     }
   };
 
+  const buildAiContext = () => {
+    const parts: string[] = ['FORMULÁRIO: Formador'];
+    if (formData.nome) parts.push(`Nome: ${formData.nome}`);
+    if (formData.habilitacoes) parts.push(`Habilitações: ${formData.habilitacoes}`);
+    if (formData.certificacaoPedagogica) parts.push(`Certificação pedagógica: ${formData.certificacaoPedagogica}`);
+    if (formData.areasCompetencia.length > 0) parts.push(`Áreas de competência: ${formData.areasCompetencia.join(', ')}`);
+    if (formData.experienciaAnos) parts.push(`Experiência: ${formData.experienciaAnos} anos`);
+    return parts.join('\n');
+  };
+
   // Verificar permissões antes de renderizar
-  if (user && user.role !== 'admin') {
+  if (user && user.role !== 'responsavel') {
     return null; // Será redirecionado pelo useEffect
   }
 
   return (
     <>
-      <Header title="Novo Formador" subtitle="Registar um novo formador" />
+      <Header title="Novo Formador" subtitle="Registar um novo formador" breadcrumbs={[{ label: 'Formadores', href: '/formadores' }, { label: 'Novo Formador' }]} />
 
       <div className="p-8 max-w-4xl">
         <button
@@ -167,12 +177,12 @@ export default function NovoFormadorPage() {
                 />
                 <Input
                   label="Telefone"
-                  placeholder="+351 XXX XXX XXX"
+                  placeholder="+244 XXX XXX XXX"
                   value={formData.telefone}
                   onChange={(e) => setFormData((prev) => ({ ...prev, telefone: e.target.value }))}
                 />
                 <Input
-                  label="NUI"
+                  label="NIF"
                   placeholder="123456789"
                   value={formData.nif}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nif: e.target.value }))}
@@ -324,6 +334,8 @@ export default function NovoFormadorPage() {
                 value={formData.curriculo || ''}
                 onChange={(e) => setFormData((prev) => ({ ...prev, curriculo: e.target.value }))}
                 rows={5}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, curriculo: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>

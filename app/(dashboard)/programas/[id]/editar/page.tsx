@@ -148,9 +148,19 @@ export default function EditarProgramaPage({ params }: PageProps) {
     return acc + (curso?.duracaoTotal || 0);
   }, 0);
 
+  const buildAiContext = () => {
+    const parts: string[] = ['FORMULÁRIO: Programa Formativo'];
+    if (formData.codigo) parts.push(`Código: ${formData.codigo}`);
+    if (formData.nome) parts.push(`Nome: ${formData.nome}`);
+    if (formData.descricao) parts.push(`Descrição: ${formData.descricao}`);
+    if (formData.objetivos.some((o) => o.trim())) parts.push(`Objetivos: ${formData.objetivos.filter((o) => o.trim()).join('; ')}`);
+    if (formData.certificacao) parts.push(`Certificação: ${formData.certificacao}`);
+    return parts.join('\n');
+  };
+
   return (
     <>
-      <Header title="Editar Programa" subtitle={programa.nome} />
+      <Header title="Editar Programa" subtitle={programa.nome} breadcrumbs={[{ label: 'Programas', href: '/programas' }, { label: 'Editar' }]} />
 
       <div className="p-8 max-w-5xl">
         <button
@@ -204,6 +214,8 @@ export default function EditarProgramaPage({ params }: PageProps) {
                 value={formData.descricao}
                 onChange={(e) => setFormData((prev) => ({ ...prev, descricao: e.target.value }))}
                 rows={4}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, descricao: text }))}
+                aiContext={buildAiContext()}
               />
 
               <Input

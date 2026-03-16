@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<{ hasAccount: boolean; hasTrainer: boolean } | null>(null);
+  const [emailStatus, setEmailStatus] = useState<{ hasAccount: boolean; hasTrainer: boolean; isPreRegistered: boolean } | null>(null);
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
@@ -68,16 +68,16 @@ export default function LoginPage() {
 
     try {
       const status = await checkEmailStatus(email);
-      setEmailStatus(status);
+      // Pré-registado = tem userDoc mas sem uid (formando, assistente, etc.)
+      const isPreRegistered = !!status.userDoc && !status.userDoc.uid;
+      setEmailStatus({ ...status, isPreRegistered });
 
-      if (status.hasAccount) {
-        // Tem auth: ir para o passo da password
+      if (status.hasAccount || isPreRegistered || status.hasTrainer) {
         setStep('password');
-      } else if (status.hasTrainer) {
-        // Tem conta mas sem auth: ir para o passo da password (para criar password)
+      } else if (status.userDoc) {
+        // Tem userDoc com uid mas hasAccount deveria ser true - fallback
         setStep('password');
       } else {
-        // Sem auth, sem conta e sem formador: mostrar erro
         setError('Não tem conta registada em nenhum centro de formação. Contacte o responsável do seu centro de formação.');
         toast.error('Conta não encontrada', 'Contacte o responsável do seu centro de formação.');
       }
@@ -198,16 +198,10 @@ export default function LoginPage() {
                       Introduza a sua palavra-passe para iniciar sessão.
                     </p>
                   </div>
-                ) : emailStatus?.hasTrainer ? (
-                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <p className="text-sm text-emerald-700">
-                      Crie uma palavra-passe para ativar a sua conta como formador. A palavra-passe deve ter pelo menos 6 caracteres.
-                    </p>
-                  </div>
                 ) : (
                   <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                     <p className="text-sm text-emerald-700">
-                      Crie uma palavra-passe para ativar a sua conta. A palavra-passe deve ter pelo menos 6 caracteres.
+                      É o seu primeiro acesso. Crie uma palavra-passe para ativar a sua conta. A palavra-passe deve ter pelo menos 6 caracteres.
                     </p>
                   </div>
                 )}
@@ -245,7 +239,7 @@ export default function LoginPage() {
                   isLoading={isSubmitting}
                   disabled={isSubmitting || isLoading}
                 >
-                  {emailStatus?.hasAccount ? 'Entrar' : emailStatus?.hasTrainer ? 'Criar conta e entrar' : 'Criar conta e entrar'}
+                  {emailStatus?.hasAccount ? 'Entrar' : 'Ativar conta e entrar'}
                 </Button>
               </form>
             )}

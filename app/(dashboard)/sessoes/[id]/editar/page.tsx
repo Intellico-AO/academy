@@ -2,11 +2,13 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../../context/AuthContext';
 import { useApp } from '../../../../context/AppContext';
 import { Header } from '../../../../components/layout';
 import { Button, Input, TextArea, Card, CardContent, CardHeader, CardTitle, Select } from '../../../../components/ui';
 import { ArrowLeft, Plus, Trash2, Save, PlayCircle } from 'lucide-react';
-import { SessionFormData, SessionActivity, SessionResource, SessionType, Status } from '../../../../types';
+import { SessionFormData, SessionActivity, SessionResource, SessionType, Status, Trainer } from '../../../../types';
+import { getActiveTrainers } from '../../../../lib/trainersService';
 
 type ActivityFormData = Omit<SessionActivity, 'id' | 'ordem'>;
 type ResourceFormData = Omit<SessionResource, 'id'>;
@@ -18,9 +20,30 @@ interface PageProps {
 export default function EditarSessaoPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const { getSessao, atualizarSessao, state, getCurso } = useApp();
+  const { center } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [formadores, setFormadores] = useState<Trainer[]>([]);
+
+  // Carregar formadores do centro
+  useEffect(() => {
+    if (center?.id) {
+      getActiveTrainers(center.id).then(setFormadores).catch(console.error);
+    }
+  }, [center?.id]);
+
+  // Apenas formador pode editar sessões
+  useEffect(() => {
+    if (user && user.role !== 'formador') {
+      router.push('/sessoes');
+    }
+  }, [user, router]);
+
+  if (user && user.role !== 'formador') {
+    return null;
+  }
 
   const sessao = getSessao(id);
 
@@ -30,13 +53,13 @@ export default function EditarSessaoPage({ params }: PageProps) {
     nome: '',
     descricao: '',
     tipo: 'presencial',
-    dataInicio: '',
-    dataFim: '',
+    data: '',
     horaInicio: '09:00',
     horaFim: '18:00',
     local: '',
     capacidadeMaxima: 20,
     formador: '',
+    formadorId: '',
     objetivosSessao: [''],
     notas: '',
     atividades: [],
@@ -67,13 +90,13 @@ export default function EditarSessaoPage({ params }: PageProps) {
         nome: sessao.nome,
         descricao: sessao.descricao,
         tipo: sessao.tipo,
-        dataInicio: sessao.dataInicio,
-        dataFim: sessao.dataFim,
+        data: sessao.data,
         horaInicio: sessao.horaInicio,
         horaFim: sessao.horaFim,
         local: sessao.local,
         capacidadeMaxima: sessao.capacidadeMaxima,
         formador: sessao.formador,
+        formadorId: sessao.formadorId,
         objetivosSessao: sessao.objetivosSessao.length > 0 ? sessao.objetivosSessao : [''],
         notas: sessao.notas,
         atividades: sessao.atividades.map((a) => ({
@@ -211,9 +234,20 @@ export default function EditarSessaoPage({ params }: PageProps) {
     }
   };
 
+  const buildAiContext = () => {
+    const parts: string[] = ['FORMULÁRIO: Sessão Formativa'];
+    if (formData.nome) parts.push(`Nome: ${formData.nome}`);
+    if (formData.descricao) parts.push(`Descrição: ${formData.descricao}`);
+    if (formData.formador) parts.push(`Formador: ${formData.formador}`);
+    if (selectedCurso) parts.push(`Curso: ${selectedCurso.nome} (${selectedCurso.codigo})`);
+    if (formData.objetivosSessao.some((o) => o.trim())) parts.push(`Objetivos: ${formData.objetivosSessao.filter((o) => o.trim()).join('; ')}`);
+    if (formData.notas) parts.push(`Notas: ${formData.notas}`);
+    return parts.join('\n');
+  };
+
   return (
     <>
-      <Header title="Editar Sessão" subtitle={sessao.nome} />
+      <Header title="Editar Sessão" subtitle={sessao.nome} breadcrumbs={[{ label: 'Sessões', href: '/sessoes' }, { label: 'Editar' }]} />
 
       <div className="p-8 max-w-5xl">
         <button
@@ -260,8 +294,7 @@ export default function EditarSessaoPage({ params }: PageProps) {
                   onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as Status }))}
                   options={[
                     { value: 'rascunho', label: 'Rascunho' },
-                    { value: 'ativo', label: 'Agendado' },
-                    { value: 'arquivado', label: 'Concluído' },
+                    { value: 'aguardando_aprovacao', label: 'Submeter para Aprovação' },
                     { value: 'cancelado', label: 'Cancelado' },
                   ]}
                 />
@@ -281,6 +314,8 @@ export default function EditarSessaoPage({ params }: PageProps) {
                 value={formData.descricao}
                 onChange={(e) => setFormData((prev) => ({ ...prev, descricao: e.target.value }))}
                 rows={3}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, descricao: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>
@@ -291,7 +326,7 @@ export default function EditarSessaoPage({ params }: PageProps) {
               <CardTitle>Agendamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
                   label="Tipo de Sessão"
                   options={[
@@ -303,17 +338,11 @@ export default function EditarSessaoPage({ params }: PageProps) {
                   onChange={(e) => setFormData((prev) => ({ ...prev, tipo: e.target.value as SessionType }))}
                 />
                 <Input
-                  label="Data de Início"
+                  label="Data"
                   type="date"
-                  value={formData.dataInicio}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, dataInicio: e.target.value }))}
+                  value={formData.data}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, data: e.target.value }))}
                   required
-                />
-                <Input
-                  label="Data de Fim"
-                  type="date"
-                  value={formData.dataFim}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, dataFim: e.target.value }))}
                 />
               </div>
 
@@ -347,11 +376,23 @@ export default function EditarSessaoPage({ params }: PageProps) {
                 />
               </div>
 
-              <Input
+              <Select
                 label="Formador"
-                placeholder="Nome do formador responsável"
-                value={formData.formador}
-                onChange={(e) => setFormData((prev) => ({ ...prev, formador: e.target.value }))}
+                placeholder="Selecionar formador..."
+                options={formadores.map((f) => ({
+                  value: f.id,
+                  label: f.nome,
+                }))}
+                value={formData.formadorId || ''}
+                onChange={(e) => {
+                  const selected = formadores.find((f) => f.id === e.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    formadorId: e.target.value,
+                    formador: selected?.nome || '',
+                  }));
+                }}
+                required
               />
             </CardContent>
           </Card>
@@ -592,10 +633,13 @@ export default function EditarSessaoPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <TextArea
+                label="Notas Adicionais"
                 placeholder="Notas internas, observações ou instruções especiais..."
                 value={formData.notas}
                 onChange={(e) => setFormData((prev) => ({ ...prev, notas: e.target.value }))}
                 rows={4}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, notas: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>
@@ -609,7 +653,7 @@ export default function EditarSessaoPage({ params }: PageProps) {
               type="submit"
               isLoading={isSubmitting}
               leftIcon={<Save className="w-4 h-4" />}
-              disabled={!formData.cursoId || !formData.nome || !formData.dataInicio}
+              disabled={!formData.cursoId || !formData.nome || !formData.data}
             >
               Guardar Alterações
             </Button>

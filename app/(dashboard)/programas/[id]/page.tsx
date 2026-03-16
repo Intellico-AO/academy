@@ -44,6 +44,7 @@ export default function ProgramaDetalhesPage({ params }: PageProps) {
       <Header
         title={programa.nome}
         subtitle={`Código: ${programa.codigo}`}
+        breadcrumbs={[{ label: 'Programas', href: '/programas' }, { label: programa.nome }]}
       />
 
       <div className="p-8">

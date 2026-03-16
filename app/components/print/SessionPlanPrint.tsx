@@ -1,17 +1,16 @@
 'use client';
 
-import { Session, SessionPlan, Course, CourseModule } from '../../types';
+import { SessionPlan, Session, Course } from '../../types';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 interface SessionPlanPrintProps {
-  sessao: Session;
   plano: SessionPlan;
-  curso: Course | undefined;
-  modulo: CourseModule | undefined;
+  sessao: Session;
+  curso?: Course;
 }
 
-export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPrintProps) {
+export function SessionPlanPrint({ plano, sessao, curso }: SessionPlanPrintProps) {
   return (
     <div className="print-container print-only" id="print-session-plan">
       {/* Cabeçalho */}
@@ -22,8 +21,8 @@ export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPr
             <div className="print-subtitle">{sessao.nome}</div>
           </div>
           <div style={{ textAlign: 'right', fontSize: '9pt', color: '#64748b' }}>
-            <div><strong>Código:</strong> {curso?.codigo || 'N/A'}</div>
-            <div><strong>Data:</strong> {format(new Date(sessao.dataInicio), "d 'de' MMMM 'de' yyyy", { locale: pt })}</div>
+            <div><strong>Curso:</strong> {curso?.nome || 'N/A'}</div>
+            <div><strong>Data:</strong> {sessao.data}</div>
           </div>
         </div>
       </div>
@@ -33,41 +32,33 @@ export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPr
         <div className="print-section-title">1. INFORMAÇÕES GERAIS</div>
         <div className="print-info-grid">
           <div className="print-info-item">
-            <span className="print-info-label">Curso:</span>
-            <span className="print-info-value">{curso?.nome || 'N/A'}</span>
+            <span className="print-info-label">Sessão:</span>
+            <span className="print-info-value">{sessao.nome}</span>
           </div>
           <div className="print-info-item">
-            <span className="print-info-label">Módulo:</span>
-            <span className="print-info-value">{modulo?.nome || 'N/A'}</span>
+            <span className="print-info-label">Curso:</span>
+            <span className="print-info-value">{curso?.nome || 'N/A'}</span>
           </div>
           <div className="print-info-item">
             <span className="print-info-label">Formador:</span>
             <span className="print-info-value">{sessao.formador || 'A designar'}</span>
           </div>
           <div className="print-info-item">
-            <span className="print-info-label">Local:</span>
-            <span className="print-info-value">{sessao.local || 'A definir'}</span>
-          </div>
-          <div className="print-info-item">
             <span className="print-info-label">Horário:</span>
             <span className="print-info-value">{sessao.horaInicio} - {sessao.horaFim}</span>
           </div>
           <div className="print-info-item">
-            <span className="print-info-label">Duração:</span>
-            <span className="print-info-value">{plano.tempoEstimado} minutos</span>
+            <span className="print-info-label">Local:</span>
+            <span className="print-info-value">{sessao.local || 'A definir'}</span>
           </div>
           <div className="print-info-item">
-            <span className="print-info-label">Tipo:</span>
-            <span className="print-info-value">{sessao.tipo === 'presencial' ? 'Presencial' : sessao.tipo === 'online' ? 'Online' : 'Híbrido'}</span>
-          </div>
-          <div className="print-info-item">
-            <span className="print-info-label">Capacidade:</span>
-            <span className="print-info-value">{sessao.capacidadeMaxima} formandos</span>
+            <span className="print-info-label">Módulos:</span>
+            <span className="print-info-value">{curso?.modulos.length || 0}</span>
           </div>
         </div>
       </div>
 
-      {/* Objetivos */}
+      {/* Objetivos da Sessão */}
       {sessao.objetivosSessao.length > 0 && (
         <div className="print-section">
           <div className="print-section-title">2. OBJETIVOS DA SESSÃO</div>
@@ -79,22 +70,51 @@ export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPr
         </div>
       )}
 
-      {/* Metodologias */}
-      {plano.metodologias.length > 0 && (
+      {/* Objetivos do Curso */}
+      {curso && curso.objetivosGerais.length > 0 && (
         <div className="print-section">
-          <div className="print-section-title">3. METODOLOGIAS PEDAGÓGICAS</div>
+          <div className="print-section-title">OBJETIVOS GERAIS DO CURSO</div>
           <ul className="print-list">
-            {plano.metodologias.map((met, index) => (
-              <li key={index}>{met}</li>
+            {curso.objetivosGerais.map((obj, index) => (
+              <li key={index}>{obj}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Métodos e Técnicas */}
+      {(plano.metodos.length > 0 || plano.tecnicas.length > 0) && (
+        <div className="print-section">
+          <div className="print-section-title">3. MÉTODOS E TÉCNICAS PEDAGÓGICAS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5mm' }}>
+            {plano.metodos.length > 0 && (
+              <div>
+                <strong style={{ fontSize: '9pt', color: '#475569' }}>Métodos:</strong>
+                <ul className="print-list" style={{ marginTop: '2mm' }}>
+                  {plano.metodos.map((met, index) => (
+                    <li key={index}>{met}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {plano.tecnicas.length > 0 && (
+              <div>
+                <strong style={{ fontSize: '9pt', color: '#475569' }}>Técnicas:</strong>
+                <ul className="print-list" style={{ marginTop: '2mm' }}>
+                  {plano.tecnicas.map((tec, index) => (
+                    <li key={index}>{tec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Estrutura da Sessão */}
       <div className="print-section">
         <div className="print-section-title">4. ESTRUTURA PEDAGÓGICA</div>
-        
+
         {plano.introducao && (
           <div style={{ marginBottom: '4mm' }}>
             <strong style={{ color: '#475569', fontSize: '9pt' }}>Introdução / Enquadramento:</strong>
@@ -117,28 +137,26 @@ export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPr
         )}
       </div>
 
-      {/* Plano de Atividades */}
-      {sessao.atividades.length > 0 && (
+      {/* Módulos do Curso */}
+      {curso && curso.modulos.length > 0 && (
         <div className="print-section">
-          <div className="print-section-title">5. PLANO DE ATIVIDADES</div>
+          <div className="print-section-title">5. MÓDULOS DO CURSO</div>
           <table className="print-table">
             <thead>
               <tr>
                 <th style={{ width: '8%' }}>Nº</th>
-                <th style={{ width: '35%' }}>Atividade</th>
-                <th style={{ width: '15%' }}>Tipo</th>
-                <th style={{ width: '12%' }}>Duração</th>
-                <th style={{ width: '30%' }}>Descrição</th>
+                <th style={{ width: '40%' }}>Módulo</th>
+                <th style={{ width: '12%' }}>Horas</th>
+                <th style={{ width: '40%' }}>Descrição</th>
               </tr>
             </thead>
             <tbody>
-              {sessao.atividades.map((atividade, index) => (
-                <tr key={atividade.id}>
+              {curso.modulos.map((modulo, index) => (
+                <tr key={modulo.id}>
                   <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                  <td>{atividade.nome}</td>
-                  <td>{atividade.tipo === 'teorica' ? 'Teórica' : atividade.tipo === 'pratica' ? 'Prática' : atividade.tipo === 'avaliacao' ? 'Avaliação' : 'Intervalo'}</td>
-                  <td style={{ textAlign: 'center' }}>{atividade.duracaoMinutos} min</td>
-                  <td>{atividade.descricao || '-'}</td>
+                  <td>{modulo.nome}</td>
+                  <td style={{ textAlign: 'center' }}>{modulo.duracaoHoras}h</td>
+                  <td>{modulo.descricao || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -146,32 +164,17 @@ export function SessionPlanPrint({ sessao, plano, curso, modulo }: SessionPlanPr
         </div>
       )}
 
-      {/* Materiais e Recursos */}
-      <div className="print-section">
-        <div className="print-section-title">6. MATERIAIS E RECURSOS</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5mm' }}>
-          {plano.materiaisNecessarios.length > 0 && (
-            <div>
-              <strong style={{ fontSize: '9pt', color: '#475569' }}>Materiais Pedagógicos:</strong>
-              <ul className="print-list" style={{ marginTop: '2mm' }}>
-                {plano.materiaisNecessarios.map((mat, index) => (
-                  <li key={index}>{mat}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {sessao.recursos.length > 0 && (
-            <div>
-              <strong style={{ fontSize: '9pt', color: '#475569' }}>Equipamentos/Recursos:</strong>
-              <ul className="print-list" style={{ marginTop: '2mm' }}>
-                {sessao.recursos.map((rec) => (
-                  <li key={rec.id}>{rec.nome} (x{rec.quantidade})</li>
-                ))}
-              </ul>
-            </div>
-          )}
+      {/* Recursos */}
+      {sessao.recursos.length > 0 && (
+        <div className="print-section">
+          <div className="print-section-title">6. MATERIAIS E RECURSOS</div>
+          <ul className="print-list">
+            {sessao.recursos.map((recurso) => (
+              <li key={recurso.id}>{recurso.nome} ({recurso.tipo}) x{recurso.quantidade}</li>
+            ))}
+          </ul>
         </div>
-      </div>
+      )}
 
       {/* Avaliação */}
       {plano.avaliacaoFormativa && (

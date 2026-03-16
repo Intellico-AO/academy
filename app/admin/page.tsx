@@ -148,7 +148,7 @@ export default function AdminPage() {
 
   const sessoesAgendadas = useMemo(() => {
     const hoje = new Date();
-    return state.sessoes.filter(s => new Date(s.dataInicio) >= hoje).length;
+    return state.sessoes.filter(s => new Date(s.data) >= hoje).length;
   }, [state.sessoes]);
 
   const metricas = useMemo(() => [

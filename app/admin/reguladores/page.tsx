@@ -661,8 +661,8 @@ export default function ReguladoresPage() {
                             <p className="text-xs text-slate-500 truncate">
                               {u.role === 'admin'
                                 ? 'Administrador'
-                                : u.role === 'gestor'
-                                ? 'Gestor'
+                                : u.role === 'responsavel'
+                                ? 'Responsável'
                                 : u.role === 'regulador'
                                 ? 'Regulador'
                                 : 'Formador'}

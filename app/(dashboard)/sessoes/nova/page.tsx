@@ -1,20 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../context/AuthContext';
 import { useApp } from '../../../context/AppContext';
 import { Header } from '../../../components/layout';
 import { Button, Input, TextArea, Card, CardContent, CardHeader, CardTitle, Select } from '../../../components/ui';
 import { ArrowLeft, Plus, Trash2, Save, Clock, PlayCircle } from 'lucide-react';
-import { SessionFormData, SessionActivity, SessionResource, SessionType } from '../../../types';
+import { SessionFormData, SessionActivity, SessionResource, SessionType, Trainer } from '../../../types';
+import { getActiveTrainers } from '../../../lib/trainersService';
 
 type ActivityFormData = Omit<SessionActivity, 'id' | 'ordem'>;
 type ResourceFormData = Omit<SessionResource, 'id'>;
 
 export default function NovaSessaoPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { adicionarSessao, state, getCurso } = useApp();
+  const { center } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formadores, setFormadores] = useState<Trainer[]>([]);
+
+  // Carregar formadores do centro
+  useEffect(() => {
+    if (center?.id) {
+      getActiveTrainers(center.id).then(setFormadores).catch(console.error);
+    }
+  }, [center?.id]);
+
+  // Apenas formador pode criar sessões
+  useEffect(() => {
+    if (user && user.role !== 'formador') {
+      router.push('/sessoes');
+    }
+  }, [user, router]);
+
+  if (user && user.role !== 'formador') {
+    return null;
+  }
 
   const [formData, setFormData] = useState<SessionFormData>({
     cursoId: '',
@@ -22,13 +45,13 @@ export default function NovaSessaoPage() {
     nome: '',
     descricao: '',
     tipo: 'presencial',
-    dataInicio: '',
-    dataFim: '',
+    data: '',
     horaInicio: '09:00',
     horaFim: '18:00',
     local: '',
     capacidadeMaxima: 20,
     formador: '',
+    formadorId: '',
     objetivosSessao: [''],
     notas: '',
     atividades: [],
@@ -152,9 +175,20 @@ export default function NovaSessaoPage() {
     }
   };
 
+  const buildAiContext = () => {
+    const parts: string[] = ['FORMULÁRIO: Sessão Formativa'];
+    if (formData.nome) parts.push(`Nome: ${formData.nome}`);
+    if (formData.descricao) parts.push(`Descrição: ${formData.descricao}`);
+    if (formData.formador) parts.push(`Formador: ${formData.formador}`);
+    if (selectedCurso) parts.push(`Curso: ${selectedCurso.nome} (${selectedCurso.codigo})`);
+    if (formData.objetivosSessao.some((o) => o.trim())) parts.push(`Objetivos: ${formData.objetivosSessao.filter((o) => o.trim()).join('; ')}`);
+    if (formData.notas) parts.push(`Notas: ${formData.notas}`);
+    return parts.join('\n');
+  };
+
   return (
     <>
-      <Header title="Nova Sessão" subtitle="Agendar uma nova sessão formativa" />
+      <Header title="Nova Sessão" subtitle="Agendar uma nova sessão formativa" breadcrumbs={[{ label: 'Sessões', href: '/sessoes' }, { label: 'Nova Sessão' }]} />
 
       <div className="p-8 max-w-5xl">
         <button
@@ -211,6 +245,8 @@ export default function NovaSessaoPage() {
                 value={formData.descricao}
                 onChange={(e) => setFormData((prev) => ({ ...prev, descricao: e.target.value }))}
                 rows={3}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, descricao: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>
@@ -221,7 +257,7 @@ export default function NovaSessaoPage() {
               <CardTitle>Agendamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
                   label="Tipo de Sessão"
                   options={[
@@ -233,17 +269,11 @@ export default function NovaSessaoPage() {
                   onChange={(e) => setFormData((prev) => ({ ...prev, tipo: e.target.value as SessionType }))}
                 />
                 <Input
-                  label="Data de Início"
+                  label="Data"
                   type="date"
-                  value={formData.dataInicio}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, dataInicio: e.target.value }))}
+                  value={formData.data}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, data: e.target.value }))}
                   required
-                />
-                <Input
-                  label="Data de Fim"
-                  type="date"
-                  value={formData.dataFim}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, dataFim: e.target.value }))}
                 />
               </div>
 
@@ -277,11 +307,23 @@ export default function NovaSessaoPage() {
                 />
               </div>
 
-              <Input
+              <Select
                 label="Formador"
-                placeholder="Nome do formador responsável"
-                value={formData.formador}
-                onChange={(e) => setFormData((prev) => ({ ...prev, formador: e.target.value }))}
+                placeholder="Selecionar formador..."
+                options={formadores.map((f) => ({
+                  value: f.id,
+                  label: f.nome,
+                }))}
+                value={formData.formadorId || ''}
+                onChange={(e) => {
+                  const selected = formadores.find((f) => f.id === e.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    formadorId: e.target.value,
+                    formador: selected?.nome || '',
+                  }));
+                }}
+                required
               />
             </CardContent>
           </Card>
@@ -522,10 +564,13 @@ export default function NovaSessaoPage() {
             </CardHeader>
             <CardContent>
               <TextArea
+                label="Notas Adicionais"
                 placeholder="Notas internas, observações ou instruções especiais..."
                 value={formData.notas}
                 onChange={(e) => setFormData((prev) => ({ ...prev, notas: e.target.value }))}
                 rows={4}
+                onAiGenerate={(text) => setFormData((prev) => ({ ...prev, notas: text }))}
+                aiContext={buildAiContext()}
               />
             </CardContent>
           </Card>
@@ -539,7 +584,7 @@ export default function NovaSessaoPage() {
               type="submit"
               isLoading={isSubmitting}
               leftIcon={<Save className="w-4 h-4" />}
-              disabled={!formData.cursoId || !formData.nome || !formData.dataInicio}
+              disabled={!formData.cursoId || !formData.nome || !formData.data}
             >
               Guardar Sessão
             </Button>

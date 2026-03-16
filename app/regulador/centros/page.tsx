@@ -8,6 +8,7 @@ import { Header } from '../../components/layout';
 import {
   Card,
   Badge,
+  Button,
   EmptyState,
   getStatusBadgeVariant,
   getStatusLabel,
@@ -26,6 +27,8 @@ import {
   Globe,
   User,
   ChevronRight,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 
 export default function ReguladorCentrosPage() {
@@ -48,6 +51,30 @@ export default function ReguladorCentrosPage() {
     }
     fetchData();
   }, []);
+
+  const handleAprovarCentro = async (centro: TrainingCenter, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await authService.updateTrainingCenter(centro.id, { status: 'ativo', dataAtualizacao: new Date().toISOString() });
+      setCentros((prev) => prev.map((c) => c.id === centro.id ? { ...c, status: 'ativo' } : c));
+    } catch (error) {
+      console.error('Erro ao aprovar centro:', error);
+    }
+  };
+
+  const handleRejeitarCentro = async (centro: TrainingCenter, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await authService.updateTrainingCenter(centro.id, { status: 'inativo', dataAtualizacao: new Date().toISOString() });
+      setCentros((prev) => prev.map((c) => c.id === centro.id ? { ...c, status: 'inativo' } : c));
+    } catch (error) {
+      console.error('Erro ao rejeitar centro:', error);
+    }
+  };
+
+  const pendentes = centros.filter((c) => c.status === 'aguardando_aprovacao').length;
 
   const filteredCentros = useMemo(
     () =>
@@ -194,12 +221,34 @@ export default function ReguladorCentrosPage() {
                     <Badge variant={getStatusBadgeVariant(centro.status)}>
                       {getStatusLabel(centro.status)}
                     </Badge>
+
+                    {centro.status === 'aguardando_aprovacao' ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleRejeitarCentro(centro, e)}
+                          leftIcon={<XCircle className="w-3.5 h-3.5" />}
+                          className="!text-rose-600 !border-rose-200 hover:!bg-rose-50"
+                        >
+                          Rejeitar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => handleAprovarCentro(centro, e)}
+                          leftIcon={<CheckCircle className="w-3.5 h-3.5" />}
+                        >
+                          Aprovar
+                        </Button>
+                      </div>
+                    ) : (
                     <span className="text-xs text-slate-400">
                       Desde{' '}
                       {format(new Date(centro.dataCriacao), 'MMM yyyy', {
                         locale: pt,
                       })}
                     </span>
+                    )}
                   </div>
                 </Card>
               </Link>

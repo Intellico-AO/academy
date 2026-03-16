@@ -5,7 +5,8 @@
 export type Status = 'rascunho' | 'ativo' | 'arquivado' | 'cancelado' | 'inativo' | 'em_avaliacao' | 'aguardando_aprovacao';
 export type SessionType = 'presencial' | 'online' | 'hibrido';
 export type AuditAction = 'criar' | 'editar' | 'eliminar' | 'arquivar' | 'ativar';
-export type UserRole = 'admin' | 'gestor' | 'formador' | 'regulador';
+export type UserRole = 'admin' | 'responsavel' | 'assistente' | 'formador' | 'regulador' | 'formando';
+export type EnrollmentStatus = 'ativo' | 'concluido' | 'cancelado';
 export type AdminRole = 'owner' | 'manager';
 
 // ==========================================
@@ -108,7 +109,9 @@ export interface UserAccount {
   nome: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[]; // Papéis adicionais do utilizador (permite alternar entre ambientes)
   centroFormacaoId: string;
+  centrosFormacaoIds?: string[]; // Centros adicionais a que o utilizador está associado
   ativo: boolean;
   avatarUrl?: string;
   dataNascimento?: string;
@@ -182,9 +185,10 @@ export interface Course {
   prerequisitos: string[];
   duracaoTotal: number;
   modulos: CourseModule[];
-  metodologia: string;
   avaliacao: string;
   certificacao: string;
+  formadorId?: string;
+  formadorNome?: string;
   centroFormacaoId: string;
   status: Status;
   dataCriacao: string;
@@ -247,8 +251,7 @@ export interface Session {
   nome: string;
   descricao: string;
   tipo: SessionType;
-  dataInicio: string;
-  dataFim: string;
+  data: string;
   horaInicio: string;
   horaFim: string;
   local: string;
@@ -276,9 +279,8 @@ export interface SessionPlan {
   introducao: string;
   desenvolvimento: string;
   conclusao: string;
-  materiaisNecessarios: string[];
-  tempoEstimado: number;
-  metodologias: string[];
+  metodos: string[];
+  tecnicas: string[];
   avaliacaoFormativa: string;
   adaptacoes: string;
   observacoes: string;
@@ -353,6 +355,21 @@ export interface Worksheet {
 }
 
 // ==========================================
+// INSCRIÇÕES (FORMANDOS EM CURSOS)
+// ==========================================
+
+export interface Enrollment {
+  id: string;
+  formandoId: string;
+  cursoId: string;
+  centroFormacaoId: string;
+  status: EnrollmentStatus;
+  dataInscricao: string;
+  dataCriacao: string;
+  dataAtualizacao: string;
+}
+
+// ==========================================
 // AUDITORIA
 // ==========================================
 
@@ -369,7 +386,9 @@ export interface AuditLog {
     | 'formador'
     | 'utilizador'
     | 'regulador'
-    | 'administrador';
+    | 'administrador'
+    | 'formando'
+    | 'inscricao';
   entidadeId: string;
   entidadeNome: string;
   acao: AuditAction;
@@ -429,9 +448,10 @@ export interface CourseFormData {
   objetivosGerais: string[];
   publicoAlvo: string;
   prerequisitos: string[];
-  metodologia: string;
   avaliacao: string;
   certificacao: string;
+  formadorId?: string;
+  formadorNome?: string;
   modulos: Omit<CourseModule, 'id' | 'ordem'>[];
 }
 
@@ -450,8 +470,7 @@ export interface SessionFormData {
   nome: string;
   descricao: string;
   tipo: SessionType;
-  dataInicio: string;
-  dataFim: string;
+  data: string;
   horaInicio: string;
   horaFim: string;
   local: string;

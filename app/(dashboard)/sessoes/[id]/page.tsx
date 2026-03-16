@@ -3,6 +3,7 @@
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../../context/AuthContext';
 import { useApp } from '../../../context/AppContext';
 import { Header } from '../../../components/layout';
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge, getStatusBadgeVariant, getStatusLabel } from '../../../components/ui';
@@ -18,7 +19,9 @@ interface PageProps {
 export default function SessaoDetalhesPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const { getSessao, getCurso, getAuditLogs, getPlanoSessao } = useApp();
+  const isFormador = user?.role === 'formador';
 
   const sessao = getSessao(id);
   const curso = sessao ? getCurso(sessao.cursoId) : null;
@@ -69,6 +72,7 @@ export default function SessaoDetalhesPage({ params }: PageProps) {
       <Header
         title={sessao.nome}
         subtitle={curso ? `${curso.codigo} - ${curso.nome}` : undefined}
+        breadcrumbs={[{ label: 'Sessões', href: '/sessoes' }, { label: sessao.nome }]}
       />
 
       <div className="p-8">
@@ -88,11 +92,13 @@ export default function SessaoDetalhesPage({ params }: PageProps) {
             <Badge variant={getStatusBadgeVariant(sessao.status)} className="text-sm px-3 py-1">
               {sessao.status === 'ativo' ? 'Agendado' : getStatusLabel(sessao.status)}
             </Badge>
-            <Link href={`/sessoes/${sessao.id}/editar`}>
-              <Button leftIcon={<Edit className="w-4 h-4" />}>
-                Editar Sessão
-              </Button>
-            </Link>
+            {isFormador && (
+              <Link href={`/sessoes/${sessao.id}/editar`}>
+                <Button leftIcon={<Edit className="w-4 h-4" />}>
+                  Editar Sessão
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -271,7 +277,7 @@ export default function SessaoDetalhesPage({ params }: PageProps) {
                     <div>
                       <p className="text-sm text-slate-500">Data</p>
                       <p className="font-semibold text-slate-900">
-                        {format(new Date(sessao.dataInicio), "d 'de' MMMM 'de' yyyy", {
+                        {format(new Date(sessao.data), "d 'de' MMMM 'de' yyyy", {
                           locale: pt,
                         })}
                       </p>
